@@ -1,0 +1,122 @@
+{
+  "Salary": {
+    "keywords": [
+      "salary",
+      "wage",
+      "payroll",
+      "income",
+      "pay"
+    ],
+    "type": "income"
+  },
+  "Food": {
+    "keywords": [
+      "restaurant",
+      "food",
+      "dining",
+      "cafe",
+      "kitchen",
+      "meal",
+      "swiggy",
+      "zomato",
+      "uber eats"
+    ],
+    "type": "expense"
+  },
+  "Transportation": {
+    "keywords": [
+      "uber",
+      "ola",
+      "taxi",
+      "bus",
+      "metro",
+      "fuel",
+      "petrol",
+      "diesel",
+      "parking"
+    ],
+    "type": "expense"
+  },
+  "Shopping": {
+    "keywords": [
+      "amazon",
+      "flipkart",
+      "myntra",
+      "shopping",
+      "purchase",
+      "buy"
+    ],
+    "type": "expense"
+  },
+  "Utilities": {
+    "keywords": [
+      "electricity",
+      "water",
+      "gas",
+      "internet",
+      "mobile",
+      "phone",
+      "broadband"
+    ],
+    "type": "expense"
+  },
+  "Healthcare": {
+    "keywords": [
+      "hospital",
+      "doctor",
+      "medical",
+      "pharmacy",
+      "medicine",
+      "health"
+    ],
+    "type": "expense"
+  },
+  "Entertainment": {
+    "keywords": [
+      "movie",
+      "netflix",
+      "spotify",
+      "game",
+      "entertainment",
+      "cinema"
+    ],
+    "type": "expense"
+  },
+  "Investment": {
+    "keywords": [
+      "mutual fund",
+      "sip",
+      "stock",
+      "investment",
+      "dividend",
+      "equity"
+    ],
+    "type": "asset"
+  },
+  "EMI": {
+    "keywords": [
+      "emi",
+      "loan",
+      "mortgage",
+      "credit",
+      "installment"
+    ],
+    "type": "liability"
+  },
+  "Suspense": {
+    "keywords": [
+      "suspense",
+      "uncertain",
+      "low confidence"
+    ],
+    "type": "expense"
+  },
+  "Others": {
+    "keywords": [
+      "misc",
+      "other",
+      "unknown"
+    ],
+    "type": "expense"
+  }
+}

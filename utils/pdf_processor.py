@@ -81,18 +81,20 @@ class PDFProcessor:
                 amount = 0.0
                 txn_type = "unknown"
 
-                if deposit and not withdrawal:
-                    amount = float(deposit.replace(",", "").replace("-", ""))
-                    txn_type = "income"
-                elif withdrawal:
-                    amount = float(withdrawal.replace(",", "").replace("-", ""))
-                    txn_type = "expense"
+                if withdrawal:
+                    amount = -float(withdrawal.replace(",", ""))
+                    txn_type = "debit"
+                elif deposit:
+                    amount = float(deposit.replace(",", ""))
+                    txn_type = "credit"
 
-                transactions.append({
-                    "date": date,
-                    "amount": amount,
-                    "type": txn_type,
-                    "raw": line
-                })
+                if amount != 0:
+                    transactions.append({
+                        'date': date,
+                        'narration': line.strip()[:100],  # First 100 chars as narration
+                        'amount': amount,
+                        'type': txn_type,
+                        'source_file': 'PDF'
+                    })
 
         return transactions

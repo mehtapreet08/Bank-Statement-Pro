@@ -8,8 +8,12 @@ import numpy as np
 class DataManager:
     """Manages transaction data storage and retrieval"""
     
-    def __init__(self):
-        self.data_dir = "data"
+    def __init__(self, user_data_dir: str = None):
+        if user_data_dir:
+            self.data_dir = user_data_dir
+        else:
+            self.data_dir = "data"
+        
         self.transactions_file = os.path.join(self.data_dir, "transactions.csv")
         self.metadata_file = os.path.join(self.data_dir, "metadata.json")
         
@@ -98,6 +102,10 @@ class DataManager:
         suspicious_transactions = []
         df_copy = df.copy()
         df_copy['amount_abs'] = df_copy['amount'].abs()
+        
+        # Filter out already approved transactions
+        if 'approved' in df_copy.columns:
+            df_copy = df_copy[df_copy['approved'] != True]
         
         # 1. Repeated identical amounts on same day
         same_day_amounts = df_copy.groupby(['date', 'amount_abs']).size()

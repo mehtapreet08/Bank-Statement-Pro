@@ -21,6 +21,7 @@ from utils.data_manager import DataManager
 from utils.chart_generator import ChartGenerator
 from utils.audit_logger import AuditLogger
 from utils.rules_engine import RulesEngine
+from utils.auth_manager import AuthManager
 
 
 
@@ -28,13 +29,13 @@ from utils.rules_engine import RulesEngine
 
 # Initialize components
 @st.cache_resource
-def init_components():
+def init_components(user_data_dir=None):
     """Initialize all utility components"""
     pdf_processor = PDFProcessor()
     excel_processor = ExcelProcessor()
     transaction_parser = TransactionParser()
-    ai_categorizer = AICategorizer()
-    data_manager = DataManager()
+    ai_categorizer = AICategorizer(user_data_dir)
+    data_manager = DataManager(user_data_dir)
     chart_generator = ChartGenerator()
     audit_logger = AuditLogger()
     rules_engine = RulesEngine()
@@ -49,7 +50,54 @@ def init_session_state():
     if 'uploaded_files' not in st.session_state:
         st.session_state.uploaded_files = []
     if 'current_view' not in st.session_state:
-        st.session_state.current_view = 'upload'
+        st.session_state.current_view = 'Upload & Process'
+    if 'authenticated' not in st.session_state:
+        st.session_state.authenticated = False
+    if 'username' not in st.session_state:
+        st.session_state.username = None
+    if 'user_data_dir' not in st.session_state:
+        st.session_state.user_data_dir = None
+
+def render_login():
+    """Render login/register form"""
+    auth_manager = AuthManager()
+
+    st.title("🏦 Bank Statement Analyzer - Login")
+
+    tab1, tab2 = st.tabs(["Login", "Register"])
+
+    with tab1:
+        with st.form("login_form"):
+            username = st.text_input("Username")
+            password = st.text_input("Password", type="password")
+            login_btn = st.form_submit_button("Login")
+
+            if login_btn:
+                if auth_manager.authenticate_user(username, password):
+                    st.session_state.authenticated = True
+                    st.session_state.username = username
+                    st.session_state.user_data_dir = auth_manager.get_user_data_dir(username)
+                    st.success("Login successful!")
+                    st.rerun()
+                else:
+                    st.error("Invalid username or password")
+
+    with tab2:
+        with st.form("register_form"):
+            new_username = st.text_input("Choose Username")
+            new_password = st.text_input("Choose Password", type="password")
+            confirm_password = st.text_input("Confirm Password", type="password")
+            register_btn = st.form_submit_button("Register")
+
+            if register_btn:
+                if new_password != confirm_password:
+                    st.error("Passwords don't match")
+                elif len(new_password) < 6:
+                    st.error("Password must be at least 6 characters")
+                elif auth_manager.register_user(new_username, new_password):
+                    st.success("Registration successful! Please login.")
+                else:
+                    st.error("Username already exists")
 
 def render_upload_view(pdf_proc, excel_proc, trans_parser, ai_cat, data_mgr, audit_log):
     """Render the upload and process view"""
@@ -145,7 +193,7 @@ def render_upload_view(pdf_proc, excel_proc, trans_parser, ai_cat, data_mgr, aud
                 with col3:
                     st.metric("Total Expenses", f"₹{abs(combined_df[combined_df['amount'] < 0]['amount'].sum()):,.2f}")
 
-def render_dashboard_view(data_mgr, chart_gen):
+def render_dashboard_view(data_mgr, chart_gen, ai_cat, audit_log):
     """Render the dashboard view"""
     st.header("📊 Financial Dashboard")
 
@@ -164,8 +212,15 @@ def render_dashboard_view(data_mgr, chart_gen):
     # Key Metrics
     col1, col2, col3, col4 = st.columns(4)
 
-    total_income = df[df['amount'] > 0]['amount'].sum()
-    total_expenses = abs(df[df['amount'] < 0]['amount'].sum())
+    # Filter out assets and liabilities from income/expense calculations
+    asset_categories = [cat for cat in ai_cat.get_all_categories() if ai_cat.get_category_type(cat) == 'asset']
+    liability_categories = [cat for cat in ai_cat.get_all_categories() if ai_cat.get_category_type(cat) == 'liability']
+
+    # Filter for only income/expense transactions
+    income_expense_df = df[~df['category'].isin(asset_categories + liability_categories)]
+
+    total_income = income_expense_df[income_expense_df['amount'] > 0]['amount'].sum()
+    total_expenses = abs(income_expense_df[income_expense_df['amount'] < 0]['amount'].sum())
     net_savings = total_income - total_expenses
     transaction_count = len(df)
 
@@ -182,43 +237,99 @@ def render_dashboard_view(data_mgr, chart_gen):
     col1, col2 = st.columns(2)
 
     with col1:
-        st.subheader("💰 Spending by Category")
-        category_chart = chart_gen.create_category_pie_chart(df)
+        st.subheader("💰 Income & Spending by Category")
+        # Create combined chart for both income and expenses
+        category_chart = chart_gen.create_category_pie_chart(income_expense_df)
         if category_chart:
-            # Handle pie chart clicks for filtering
-            clicked_data = st.plotly_chart(category_chart, use_container_width=True, on_select="rerun", key="category_pie")
-            
-            # Check if a category was clicked using selection state
-            if 'category_pie' in st.session_state and st.session_state.category_pie:
-                selection = st.session_state.category_pie.get('selection', {})
-                if selection and selection.get('points'):
-                    point = selection['points'][0]
-                    selected_category = point.get('label', '')
-                    if selected_category:
-                        st.session_state.selected_category_filter = selected_category
-                        st.info(f"📌 Selected category: **{selected_category}**")
-                        st.markdown("👇 **Go to Transaction Details view to edit these transactions**")
-                        
-                        # Add button to clear selection
-                        if st.button("Clear Selection", key="clear_category_selection"):
-                            if 'selected_category_filter' in st.session_state:
-                                del st.session_state.selected_category_filter
-                            st.session_state.category_pie = {}
-                            st.rerun()
+            st.plotly_chart(category_chart, use_container_width=True, key="category_pie")
 
     with col2:
         st.subheader("📈 Monthly Trend")
-        trend_chart = chart_gen.create_monthly_trend_chart(df)
+        trend_chart = chart_gen.create_monthly_trend_chart(income_expense_df)
         if trend_chart:
             st.plotly_chart(trend_chart, use_container_width=True)
 
-    # Suspicious Transactions
+    # Suspicious Transactions - Editable Table Format with Approval
     st.subheader("🚨 Suspicious Transactions")
     suspicious_transactions = data_mgr.detect_suspicious_transactions(df)
 
     if not suspicious_transactions.empty:
-        st.dataframe(suspicious_transactions[['date', 'narration', 'amount', 'category', 'suspicion_reason']], 
-                    use_container_width=True)
+        st.write("Edit categories for suspicious transactions or approve them below:")
+        available_categories = ai_cat.get_all_categories()
+
+        # Prepare display dataframe for suspicious transactions
+        susp_display_df = suspicious_transactions.copy()
+        susp_display_df['Amount (₹)'] = susp_display_df['amount'].apply(lambda x: f"₹{x:,.2f}" if x >= 0 else f"(₹{abs(x):,.2f})")
+        susp_display_df['Short Narration'] = susp_display_df['narration'].apply(lambda x: x[:50] + "..." if len(x) > 50 else x)
+        susp_display_df['Approve'] = False
+
+        # Create editable dataframe for suspicious transactions
+        edited_susp_df = st.data_editor(
+            susp_display_df[['Approve', 'date', 'Short Narration', 'Amount (₹)', 'category', 'suspicion_reason']],
+            column_config={
+                "Approve": st.column_config.CheckboxColumn("Approve"),
+                "date": st.column_config.TextColumn("Date"),
+                "Short Narration": st.column_config.TextColumn("Narration", width="large"),
+                "Amount (₹)": st.column_config.TextColumn("Amount"),
+                "category": st.column_config.SelectboxColumn("Category", options=available_categories),
+                "suspicion_reason": st.column_config.TextColumn("Suspicion Reason", disabled=True)
+            },
+            use_container_width=True,
+            hide_index=True,
+            key="suspicious_editor"
+        )
+
+        col1, col2 = st.columns(2)
+
+        with col1:
+            # Apply changes to suspicious transactions
+            if st.button("💾 Apply Changes to Suspicious Transactions"):
+                changes_made = 0
+                for i, (edited_row, original_row) in enumerate(zip(edited_susp_df.itertuples(), suspicious_transactions.itertuples())):
+                    if edited_row.category != original_row.category:
+                        # Find and update in main dataframe
+                        mask = (st.session_state.transactions['date'] == original_row.date) & \
+                               (st.session_state.transactions['narration'] == original_row.narration) & \
+                               (st.session_state.transactions['amount'] == original_row.amount)
+
+                        st.session_state.transactions.loc[mask, 'category'] = edited_row.category
+                        audit_log.log_categorization_change(str(original_row.narration), original_row.category, edited_row.category)
+                        changes_made += 1
+
+                if changes_made > 0:
+                    data_mgr.save_transactions(st.session_state.transactions)
+                    st.success(f"✅ Updated {changes_made} suspicious transactions!")
+                    st.rerun()
+                else:
+                    st.info("No changes detected.")
+
+        with col2:
+            # Approve suspicious transactions
+            if st.button("✅ Approve Selected Transactions"):
+                approved_count = 0
+                approved_mask = edited_susp_df['Approve'] == True
+
+                if approved_mask.any():
+                    # Mark approved transactions as no longer suspicious
+                    for i, (edited_row, original_row) in enumerate(zip(edited_susp_df.itertuples(), suspicious_transactions.itertuples())):
+                        if edited_row.Approve:
+                            # Find and mark as approved in main dataframe
+                            mask = (st.session_state.transactions['date'] == original_row.date) & \
+                                   (st.session_state.transactions['narration'] == original_row.narration) & \
+                                   (st.session_state.transactions['amount'] == original_row.amount)
+
+                            # Add approved flag to avoid future suspicious detection
+                            if 'approved' not in st.session_state.transactions.columns:
+                                st.session_state.transactions['approved'] = False
+                            st.session_state.transactions.loc[mask, 'approved'] = True
+                            approved_count += 1
+
+                    if approved_count > 0:
+                        data_mgr.save_transactions(st.session_state.transactions)
+                        st.success(f"✅ Approved {approved_count} transactions!")
+                        st.rerun()
+                else:
+                    st.warning("No transactions selected for approval.")
     else:
         st.info("No suspicious transactions detected.")
 
@@ -237,21 +348,29 @@ def render_transaction_details_view(data_mgr, ai_cat, audit_log):
         st.info("No transactions available. Please upload and process bank statements first.")
         return
 
+    # Initialize selection state
+    if 'selected_transactions' not in st.session_state:
+        st.session_state.selected_transactions = []
+
+    # Search functionality
+    search_term = st.text_input("🔍 Search transactions (narration)", placeholder="Type to search...")
+
     # Category filter
     categories = ['All'] + sorted(df['category'].unique().tolist())
-    
+
     # Check if a category was selected from the pie chart
     default_category = 'All'
     if hasattr(st.session_state, 'selected_category_filter') and st.session_state.selected_category_filter in categories:
         default_category = st.session_state.selected_category_filter
         # Clear the filter after using it
         del st.session_state.selected_category_filter
-    
+
     selected_category = st.selectbox("Filter by Category", categories, 
                                    index=categories.index(default_category) if default_category in categories else 0)
 
-    # Date range filter
-    col1, col2 = st.columns(2)
+    # Filters and sorting
+    col1, col2, col3, col4 = st.columns(4)
+
     with col1:
         try:
             # Try to parse dates with multiple formats
@@ -262,6 +381,7 @@ def render_transaction_details_view(data_mgr, ai_cat, audit_log):
             start_date = st.date_input("From Date", value=min_date)
         except:
             start_date = st.date_input("From Date", value=pd.Timestamp.now() - pd.Timedelta(days=30))
+
     with col2:
         try:
             # Try to parse dates with multiple formats
@@ -274,82 +394,237 @@ def render_transaction_details_view(data_mgr, ai_cat, audit_log):
         except:
             end_date = st.date_input("To Date", value=pd.Timestamp.now())
 
+    with col3:
+        transaction_type_filter = st.selectbox("Transaction Type", ["All", "Income", "Expense", "Assets", "Liabilities"])
+
+    with col4:
+        sort_by = st.selectbox("Sort by", ["Date (Latest)", "Date (Oldest)", "Amount (High to Low)", "Amount (Low to High)", "Category"])
+
     # Filter data
     filtered_df = df.copy()
+
+    # Apply search filter
+    if search_term:
+        filtered_df = filtered_df[filtered_df['narration'].str.contains(search_term, case=False, na=False)]
+
     if selected_category != 'All':
         filtered_df = filtered_df[filtered_df['category'] == selected_category]
 
-    filtered_df = filtered_df[
-        (pd.to_datetime(filtered_df['date'], format='mixed', dayfirst=True, errors='coerce') >= pd.to_datetime(start_date)) &
-        (pd.to_datetime(filtered_df['date'], format='mixed', dayfirst=True, errors='coerce') <= pd.to_datetime(end_date))
-    ]
+    # Apply transaction type filter
+    if transaction_type_filter == "Income":
+        filtered_df = filtered_df[filtered_df['amount'] > 0]
+    elif transaction_type_filter == "Expense":
+        filtered_df = filtered_df[filtered_df['amount'] < 0]
+    elif transaction_type_filter == "Assets":
+        asset_categories = [cat for cat in ai_cat.get_all_categories() if ai_cat.get_category_type(cat) == 'asset']
+        filtered_df = filtered_df[filtered_df['category'].isin(asset_categories)]
+    elif transaction_type_filter == "Liabilities":
+        liability_categories = [cat for cat in ai_cat.get_all_categories() if ai_cat.get_category_type(cat) == 'liability']
+        filtered_df = filtered_df[filtered_df['category'].isin(liability_categories)]
 
-    # Transaction editing interface
-    st.subheader("Edit Transactions")
-    st.info("Click on any row to edit its category. Changes are automatically saved and improve AI learning.")
+    # Apply date filter
+    try:
+        filtered_df = filtered_df[
+            (pd.to_datetime(filtered_df['date'], format='mixed', dayfirst=True, errors='coerce') >= pd.to_datetime(start_date)) &
+            (pd.to_datetime(filtered_df['date'], format='mixed', dayfirst=True, errors='coerce') <= pd.to_datetime(end_date))
+        ]
+    except:
+        pass  # If date filtering fails, continue without it
 
-    # Get available categories
-    available_categories = ai_cat.get_all_categories()
+    # Apply sorting
+    try:
+        if sort_by == "Date (Latest)":
+            filtered_df = filtered_df.sort_values('date_parsed', ascending=False, na_position='last')
+        elif sort_by == "Date (Oldest)":
+            filtered_df = filtered_df.sort_values('date_parsed', ascending=True, na_position='last')
+        elif sort_by == "Amount (High to Low)":
+            filtered_df = filtered_df.sort_values('amount', ascending=False)
+        elif sort_by == "Amount (Low to High)":
+            filtered_df = filtered_df.sort_values('amount', ascending=True)
+        elif sort_by == "Category":
+            filtered_df = filtered_df.sort_values('category')
+    except:
+        pass  # If sorting fails, continue without it
 
-    # Display editable transactions
-    for idx, row in filtered_df.iterrows():
-        # Check if transaction was AI categorized and show similarity score
-        similarity_score = row.get('similarity_score', 0)
-        if row.get('ai_categorized', False) and similarity_score > 0:
-            ai_label = f" ({similarity_score}%)"
-        elif row.get('ai_categorized', False):
-            ai_label = " 🤖 AI"
-        else:
-            ai_label = ""
+    # Bulk operations above the table
+    st.subheader("🔧 Bulk Operations")
 
-        with st.expander(f"{row['date']} - {row['narration'][:50]}... - ₹{row['amount']:,.2f}{ai_label}"):
-            col1, col2, col3 = st.columns([2, 1, 1])
+    # Initialize selection state in session state if not exists
+    if 'selected_transactions' not in st.session_state:
+        st.session_state.selected_transactions = []
 
-            with col1:
-                st.text(f"Narration: {row['narration']}")
-                st.text(f"Amount: ₹{row['amount']:,.2f}")
-                st.text(f"Source: {row['source_file']}")
-                similarity_score = row.get('similarity_score', 0)
-                if row.get('ai_categorized', False) and similarity_score > 0:
-                    st.caption(f"📊 Auto-categorized with {similarity_score}% similarity")
-                elif row.get('ai_categorized', False):
-                    st.caption("🤖 Categorized by AI")
-                
-                # AI Analysis button
-                if st.button("🤖 Analyze with AI", key=f"analyze_{idx}"):
-                    with st.spinner("Analyzing transaction..."):
-                        analysis = ai_cat.analyze_narration_with_ai(row['narration'])
-                        st.info(f"**Purpose:** {analysis.get('purpose', 'Unknown')}")
-                        st.info(f"**AI Suggests:** {analysis.get('suggested_category', 'Others')} (Confidence: {analysis.get('confidence', 0)}%)")
-                        st.info(f"**Reasoning:** {analysis.get('reasoning', 'No reasoning provided')}")
+    col1, col2, col3, col4 = st.columns(4)
 
-            with col2:
-                current_category = row['category']
-                new_category = st.selectbox(
-                    "Category",
-                    available_categories,
-                    index=available_categories.index(current_category) if current_category in available_categories else 0,
-                    key=f"cat_{idx}"
+    with col1:
+        if st.button("✅ Select All Filtered", key="select_all_btn"):
+            st.session_state.selected_transactions = list(range(len(filtered_df)))
+            st.rerun()
+
+    with col2:
+        if st.button("❌ Clear All Selections", key="clear_all_btn"):
+            st.session_state.selected_transactions = []
+            st.rerun()
+
+    with col3:
+        selected_count = len(st.session_state.selected_transactions)
+        st.write(f"Selected: {selected_count} transactions")
+
+    with col4:
+        if st.button("📤 Export Selected", key="export_btn"):
+            if selected_count > 0:
+                selected_data = filtered_df.iloc[st.session_state.selected_transactions]
+                csv = selected_data.to_csv(index=False)
+                st.download_button(
+                    label="Download CSV",
+                    data=csv,
+                    file_name=f"selected_transactions_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
+                    mime="text/csv"
                 )
+            else:
+                st.warning("No transactions selected for export")
 
-            with col3:
-                if st.button("Update", key=f"update_{idx}"):
-                    if new_category != current_category:
-                        # Update transaction
-                        st.session_state.transactions.loc[idx, 'category'] = new_category
-                        st.session_state.transactions.loc[idx, 'ai_categorized'] = False  # User correction
+    # Bulk operations for selected transactions
+    if selected_count > 0:
+        st.write(f"**Operations for {selected_count} selected transactions:**")
 
-                        # Update AI learning cache
-                        ai_cat.learn_from_correction(str(row['narration']), new_category)
+        col1, col2 = st.columns(2)
 
-                        # Save changes
-                        data_mgr.save_transactions(st.session_state.transactions)
+        with col1:
+            bulk_category = st.selectbox("Bulk Update Category", ai_cat.get_all_categories(), key="bulk_cat")
+            if st.button("🔄 Update Selected Categories", key="bulk_update_btn"):
+                selected_indices = filtered_df.iloc[st.session_state.selected_transactions].index
+                changes_made = 0
+                for idx in selected_indices:
+                    if idx < len(st.session_state.transactions):
+                        st.session_state.transactions.loc[idx, 'category'] = bulk_category
+                        st.session_state.transactions.loc[idx, 'ai_categorized'] = False
+                        changes_made += 1
 
-                        # Log audit trail
-                        audit_log.log_categorization_change(str(row['narration']), current_category, new_category)
+                if changes_made > 0:
+                    data_mgr.save_transactions(st.session_state.transactions)
+                    st.success(f"✅ Updated {changes_made} transactions to {bulk_category}")
+                    st.session_state.selected_transactions = []  # Clear selection
+                    st.rerun()
 
-                        st.success(f"Updated category to {new_category}")
-                        st.rerun()
+        with col2:
+            if st.button("🤖 Analyze Selected with AI", key="bulk_ai_btn"):
+                selected_indices = filtered_df.iloc[st.session_state.selected_transactions].index
+                analyzed_count = 0
+
+                with st.spinner(f"Analyzing {len(selected_indices)} transactions..."):
+                    progress_bar = st.progress(0)
+                    for i, idx in enumerate(selected_indices):
+                        if idx < len(st.session_state.transactions):
+                            row = st.session_state.transactions.loc[idx]
+                            analysis = ai_cat.analyze_narration_with_ai(row['narration'])
+
+                            if analysis and analysis.get('confidence', 0) > 30:
+                                st.session_state.transactions.loc[idx, 'category'] = analysis.get('suggested_category', 'Others')
+                                st.session_state.transactions.loc[idx, 'ai_categorized'] = True
+                                st.session_state.transactions.loc[idx, 'similarity_score'] = analysis.get('confidence', 0)
+                                analyzed_count += 1
+                            else:
+                                st.session_state.transactions.loc[idx, 'category'] = 'Suspense'
+                                st.session_state.transactions.loc[idx, 'ai_categorized'] = True
+                                st.session_state.transactions.loc[idx, 'similarity_score'] = analysis.get('confidence', 0) if analysis else 0
+
+                            progress_bar.progress((i + 1) / len(selected_indices))
+
+                if analyzed_count > 0:
+                    data_mgr.save_transactions(st.session_state.transactions)
+                    st.success(f"✅ Analyzed {analyzed_count} transactions successfully")
+                    st.session_state.selected_transactions = []  # Clear selection
+                    st.rerun()
+
+    # Transaction table display with selection
+    st.subheader("📊 Transaction Table")
+
+    if not filtered_df.empty:
+        # Prepare display dataframe
+        display_df = filtered_df.copy()
+        display_df = display_df.reset_index(drop=True)
+
+        # Add selection column based on session state
+        display_df['Select'] = display_df.index.isin(st.session_state.selected_transactions)
+
+        # Add transaction type column - editable
+        display_df['Type'] = display_df['amount'].apply(lambda x: 'Income' if x > 0 else 'Expense')
+
+        # Improved AI Status with 3 categories
+        display_df['AI Status'] = display_df.apply(lambda row: 
+            f"AI ({row.get('similarity_score', 0):.0f}%)" if row.get('ai_categorized', False)
+            else "Manual", axis=1)
+
+        # Truncate narration for display
+        display_df['Short Narration'] = display_df['narration'].apply(lambda x: x[:50] + "..." if len(x) > 50 else x)
+
+        # Format amount with negative values in red and parentheses
+        display_df['Amount (₹)'] = display_df['amount'].apply(lambda x: f"₹{x:,.2f}" if x >= 0 else f"(₹{abs(x):,.2f})")
+
+        # Convert date to string to avoid compatibility issues
+        display_df['Date'] = display_df['date'].astype(str)
+
+        # Select columns for display
+        display_columns = ['Select', 'Date', 'Short Narration', 'Amount (₹)', 'category', 'Type', 'AI Status']
+
+        # Create editable dataframe
+        edited_df = st.data_editor(
+            display_df[display_columns],
+            column_config={
+                "Select": st.column_config.CheckboxColumn("Select"),
+                "Date": st.column_config.TextColumn("Date"),
+                "Short Narration": st.column_config.TextColumn("Narration", width="large"),
+                "Amount (₹)": st.column_config.TextColumn("Amount"),
+                "category": st.column_config.SelectboxColumn("Category", options=ai_cat.get_all_categories()),
+                "Type": st.column_config.SelectboxColumn("Type", options=["Income", "Expense", "Asset", "Liability"]),
+                "AI Status": st.column_config.SelectboxColumn("AI Status", options=["Manual", "AI", "Software"])
+            },
+            use_container_width=True,
+            hide_index=True,
+            key="transaction_table",
+            on_change=lambda: st.session_state.update({'selected_transactions': [i for i, selected in enumerate(edited_df['Select']) if selected]}) if 'edited_df' in locals() else None
+        )
+
+        # Update selection state based on checkbox changes
+        if edited_df is not None:
+            new_selection = [i for i, selected in enumerate(edited_df['Select']) if selected]
+            if new_selection != st.session_state.selected_transactions:
+                st.session_state.selected_transactions = new_selection
+
+        # Apply category and type changes made in the table
+        if st.button("💾 Apply Table Changes", key="apply_changes_btn"):
+            changes_made = 0
+            for i, (edited_row, original_idx) in enumerate(zip(edited_df.itertuples(), filtered_df.index)):
+                original_category = filtered_df.loc[original_idx, 'category']
+                original_type = filtered_df.loc[original_idx, 'Type'] if 'Type' in filtered_df.columns else None
+
+                # Update category if changed
+                if edited_row.category != original_category:
+                    st.session_state.transactions.loc[original_idx, 'category'] = edited_row.category
+                    audit_log.log_categorization_change(
+                        str(filtered_df.loc[original_idx, 'narration']), 
+                        original_category, 
+                        edited_row.category
+                    )
+                    changes_made += 1
+
+                # Update type if changed
+                if hasattr(edited_row, 'Type') and edited_row.Type != original_type:
+                    # Update transaction type based on selection
+                    if edited_row.Type == 'Income' and st.session_state.transactions.loc[original_idx, 'amount'] < 0:
+                        st.session_state.transactions.loc[original_idx, 'amount'] = abs(st.session_state.transactions.loc[original_idx, 'amount'])
+                    elif edited_row.Type == 'Expense' and st.session_state.transactions.loc[original_idx, 'amount'] > 0:
+                        st.session_state.transactions.loc[original_idx, 'amount'] = -abs(st.session_state.transactions.loc[original_idx, 'amount'])
+                    changes_made += 1
+
+            if changes_made > 0:
+                data_mgr.save_transactions(st.session_state.transactions)
+                st.success(f"✅ Applied {changes_made} changes!")
+                st.rerun()
+            else:
+                st.info("No changes detected in the table.")
+    else:
+        st.info("No transactions match the current filters.")
 
 def render_category_management_view(ai_cat, audit_log):
     """Render the category management view"""
@@ -379,17 +654,17 @@ def render_category_management_view(ai_cat, audit_log):
                 st.rerun()
             else:
                 st.error("Please provide both category name and keywords")
-    
+
     with col2:
         if st.button("🔄 Refresh Transactions", help="Re-categorize all transactions with new categories"):
             if not st.session_state.transactions.empty:
                 # Clear the categorization cache to force fresh categorization
                 ai_cat.categorization_cache["patterns"] = {}
                 ai_cat._save_categorization_cache()
-                
+
                 # Reload and update category patterns
                 ai_cat.category_patterns = ai_cat._initialize_category_patterns()
-                
+
                 # Re-categorize all transactions
                 updated_df = ai_cat.categorize_transactions(st.session_state.transactions)
                 st.session_state.transactions = updated_df
@@ -407,7 +682,7 @@ def render_category_management_view(ai_cat, audit_log):
     # Default categories
     st.write("**Default Categories (Editable):**")
     default_categories = ai_cat.get_default_categories()
-    
+
     # Ensure we have a dictionary to iterate over
     if isinstance(default_categories, dict):
         categories_to_process = default_categories
@@ -419,21 +694,22 @@ def render_category_management_view(ai_cat, audit_log):
                 "keywords": ai_cat.categories.get(category, []),
                 "type": "expense"
             }
-    
+
     for category, category_data in categories_to_process.items():
-        keywords = category_data.get('keywords', [])
+        ```python
+keywords = category_data.get('keywords', [])
         category_type = category_data.get('type', 'expense')
-        
+
         with st.expander(f"📝 {category} ({category_type}) - Default"):
             col1, col2 = st.columns(2)
-            
+
             with col1:
                 new_keywords = st.text_input(
                     "Keywords (comma-separated)", 
                     value=', '.join(keywords),
                     key=f"edit_default_keywords_{category}"
                 )
-            
+
             with col2:
                 new_type = st.selectbox(
                     "Type", 
@@ -441,7 +717,7 @@ def render_category_management_view(ai_cat, audit_log):
                     index=["income", "expense", "asset", "liability"].index(category_type),
                     key=f"edit_default_type_{category}"
                 )
-            
+
             if st.button("💾 Update Default", key=f"update_default_{category}"):
                 if new_keywords.strip():
                     new_keywords_list = [kw.strip() for kw in new_keywords.split(',')]
@@ -468,14 +744,14 @@ def render_category_management_view(ai_cat, audit_log):
 
             with st.expander(f"📝 {category} ({category_type})"):
                 col1, col2 = st.columns(2)
-                
+
                 with col1:
                     new_keywords = st.text_input(
                         "Keywords (comma-separated)", 
                         value=', '.join(keywords),
                         key=f"edit_keywords_{category}"
                     )
-                
+
                 with col2:
                     new_type = st.selectbox(
                         "Type", 
@@ -483,7 +759,7 @@ def render_category_management_view(ai_cat, audit_log):
                         index=["income", "expense", "asset", "liability"].index(category_type),
                         key=f"edit_type_{category}"
                     )
-                
+
                 col1, col2 = st.columns(2)
                 with col1:
                     if st.button("💾 Update", key=f"update_{category}"):
@@ -495,7 +771,7 @@ def render_category_management_view(ai_cat, audit_log):
                             st.rerun()
                         else:
                             st.error("Keywords cannot be empty")
-                
+
                 with col2:
                     if st.button("🗑️ Delete", key=f"del_{category}"):
                         ai_cat.delete_custom_category(category)
@@ -505,23 +781,7 @@ def render_category_management_view(ai_cat, audit_log):
     else:
         st.info("No custom categories created yet.")
 
-    # Categorization cache management
-    st.subheader("AI Learning Cache")
-    cache_stats = ai_cat.get_cache_statistics()
-
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        st.metric("Cached Patterns", cache_stats.get('pattern_count', 0))
-    with col2:
-        st.metric("Learning Corrections", cache_stats.get('correction_count', 0))
-    with col3:
-        st.metric("Cache Size (KB)", cache_stats.get('cache_size_kb', 0))
-
-    if st.button("Clear AI Cache", type="secondary"):
-        ai_cat.clear_cache()
-        audit_log.log_cache_operation("clear", {"cache_size_before": cache_stats.get('cache_size_kb', 0)})
-        st.success("AI cache cleared successfully")
-        st.rerun()
+    # AI cache management is hidden from users for better UX
 
 def render_audit_trail_view(audit_log):
     """Render the audit trail view"""
@@ -612,37 +872,167 @@ def main():
     # Initialize session state
     init_session_state()
 
-    # Initialize components
+    # Check authentication
+    if not st.session_state.authenticated:
+        render_login()
+        return
+
+    # Initialize components with user-specific data
     (pdf_proc, excel_proc, trans_parser, ai_cat, data_mgr, chart_gen, 
-     audit_log, rules_engine) = init_components()
+     audit_log, rules_engine) = init_components(st.session_state.user_data_dir)
 
-    # App title and description
-    st.title("🏦 Bank Statement Analyzer")
-    st.markdown("Upload your bank statements and get intelligent transaction categorization with AI learning capabilities")
+    # App title and description with logout
+    col1, col2 = st.columns([4, 1])
+    with col1:
+        st.header("🏦 Bank Statement Analyzer")
+        st.markdown("Upload your bank statements and get intelligent transaction categorization with AI learning capabilities")
+    with col2:
+        st.write(f"👤 {st.session_state.username}")
+        if st.button("Logout"):
+            st.session_state.authenticated = False
+            st.session_state.username = None
+            st.session_state.user_data_dir = None
+            st.session_state.transactions = pd.DataFrame()
+            st.rerun()
 
-    # Sidebar for navigation
-    st.sidebar.title("Navigation")
-    view_options = ["Upload & Process", "Dashboard", "Transaction Details", 
-                   "Category Management", "Audit Trail", "Settings"]
-    selected_view = st.sidebar.selectbox("Select View", view_options)
+    # Header with navigation buttons
+    st.markdown("""
+    <style>
+    .nav-header {
+        padding: 1rem 0;
+        border-bottom: 1px solid #e0e0e0;
+        margin-bottom: 2rem;
+    }
+    .nav-button {
+        margin-right: 10px;
+        margin-bottom: 5px;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
+    with st.container():
+        st.markdown('<div class="nav-header">', unsafe_allow_html=True)
+        col1, col2, col3, col4, col5, col6, col7 = st.columns(7)
+
+        with col1:
+            if st.button("📄 Upload & Process", key="nav_upload", help="Upload and process bank statements"):
+                st.session_state.current_view = "Upload & Process"
+        with col2:
+            if st.button("📊 Dashboard", key="nav_dashboard", help="View financial dashboard"):
+                st.session_state.current_view = "Dashboard"
+        with col3:
+            if st.button("📋 Transactions", key="nav_transactions", help="View and edit transaction details"):
+                st.session_state.current_view = "Transaction Details"
+        with col4:
+            if st.button("🏷️ Categories", key="nav_categories", help="Manage categories"):
+                st.session_state.current_view = "Category Management"
+        with col5:
+            if st.button("📜 Audit Trail", key="nav_audit", help="View audit logs"):
+                st.session_state.current_view = "Audit Trail"
+        with col6:
+            if st.button("📊 Balance Sheet", key="nav_balance", help="View balance sheet"):
+                st.session_state.current_view = "Balance Sheet"
+        with col7:
+            if st.button("⚙️ Settings", key="nav_settings", help="Application settings"):
+                st.session_state.current_view = "Settings"
+
+        st.markdown('</div>', unsafe_allow_html=True)
+
+    selected_view = st.session_state.current_view
 
     # Route to appropriate view
     if selected_view == "Upload & Process":
         render_upload_view(pdf_proc, excel_proc, trans_parser, ai_cat, data_mgr, audit_log)
     elif selected_view == "Dashboard":
-        render_dashboard_view(data_mgr, chart_gen)
+        render_dashboard_view(data_mgr, chart_gen, ai_cat, audit_log)
     elif selected_view == "Transaction Details":
         render_transaction_details_view(data_mgr, ai_cat, audit_log)
     elif selected_view == "Category Management":
         render_category_management_view(ai_cat, audit_log)
     elif selected_view == "Audit Trail":
         render_audit_trail_view(audit_log)
+    elif selected_view == "Balance Sheet":
+        render_balance_sheet_view(data_mgr, ai_cat)
     elif selected_view == "Settings":
         render_settings_view(data_mgr, ai_cat, audit_log, rules_engine)
 
     # Footer
     st.markdown("---")
     st.markdown("💡 **Tip:** The AI learns from your corrections and gets better over time. All data is stored locally on your device.")
+
+def render_balance_sheet_view(data_mgr, ai_cat):
+    """Render balance sheet view for assets and liabilities"""
+    st.header("📊 Balance Sheet")
+
+    if st.session_state.transactions.empty:
+        existing_transactions = data_mgr.load_transactions()
+        if not existing_transactions.empty:
+            st.session_state.transactions = existing_transactions
+
+    df = st.session_state.transactions
+
+    if df.empty:
+        st.info("No transactions available. Please upload and process bank statements first.")
+        return
+
+    # Separate assets and liabilities
+    all_categories = ai_cat.get_all_categories()
+    asset_categories = [cat for cat in all_categories if ai_cat.get_category_type(cat) == 'asset']
+    liability_categories = [cat for cat in all_categories if ai_cat.get_category_type(cat) == 'liability']
+
+    assets_df = df[df['category'].isin(asset_categories)]
+    liabilities_df = df[df['category'].isin(liability_categories)]
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        st.subheader("💰 Assets")
+        if not assets_df.empty:
+            asset_summary = assets_df.groupby('category')['amount'].sum().reset_index()
+            asset_summary['amount'] = asset_summary['amount'].abs()
+            asset_summary = asset_summary.sort_values('amount', ascending=False)
+
+            total_assets = asset_summary['amount'].sum()
+            st.metric("Total Assets", f"₹{total_assets:,.2f}")
+
+            for _, row in asset_summary.iterrows():
+                with st.expander(f"{row['category']} - ₹{row['amount']:,.2f}"):
+                    category_transactions = assets_df[assets_df['category'] == row['category']]
+                    st.dataframe(category_transactions[['date', 'narration', 'amount']], use_container_width=True)
+        else:
+            st.info("No asset transactions found")
+
+    with col2:
+        st.subheader("📉 Liabilities")
+        if not liabilities_df.empty:
+            liability_summary = liabilities_df.groupby('category')['amount'].sum().reset_index()
+            liability_summary['amount'] = liability_summary['amount'].abs()
+            liability_summary = liability_summary.sort_values('amount', ascending=False)
+
+            total_liabilities = liability_summary['amount'].sum()
+            st.metric("Total Liabilities", f"₹{total_liabilities:,.2f}")
+
+            for _, row in liability_summary.iterrows():
+                with st.expander(f"{row['category']} - ₹{row['amount']:,.2f}"):
+                    category_transactions = liabilities_df[liabilities_df['category'] == row['category']]
+                    st.dataframe(category_transactions[['date', 'narration', 'amount']], use_container_width=True)
+        else:
+            st.info("No liability transactions found")
+
+    # Net Worth calculation
+    if not assets_df.empty or not liabilities_df.empty:
+        total_assets = assets_df['amount'].abs().sum() if not assets_df.empty else 0
+        total_liabilities = liabilities_df['amount'].abs().sum() if not liabilities_df.empty else 0
+        net_worth = total_assets - total_liabilities
+
+        st.markdown("---")
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.metric("Total Assets", f"₹{total_assets:,.2f}")
+        with col2:
+            st.metric("Total Liabilities", f"₹{total_liabilities:,.2f}")
+        with col3:
+            st.metric("Net Worth", f"₹{net_worth:,.2f}", delta=None)
 
 # Run the app
 if __name__ == "__main__":

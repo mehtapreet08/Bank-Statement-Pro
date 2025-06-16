@@ -18,32 +18,63 @@ class ChartGenerator:
         ]
 
     def create_category_pie_chart(self, df: pd.DataFrame):
-        """Create a pie chart showing spending by category with click handling"""
+        """Create a pie chart showing both income and expenses by category"""
         try:
-            # Filter only expense transactions for the pie chart
-            expense_df = df[df['amount'] < 0].copy()
-
-            if expense_df.empty:
+            if df.empty:
                 return None
 
-            # Group by category and sum absolute amounts
-            category_totals = expense_df.groupby('category')['amount'].sum().abs()
+            # Separate income and expense transactions
+            income_df = df[df['amount'] > 0].copy()
+            expense_df = df[df['amount'] < 0].copy()
 
-            # Create pie chart with custom click data
+            # Group by category and sum amounts
+            income_totals = income_df.groupby('category')['amount'].sum() if not income_df.empty else pd.Series()
+            expense_totals = expense_df.groupby('category')['amount'].sum().abs() if not expense_df.empty else pd.Series()
+
+            # Combine all categories
+            all_categories = set()
+            if not income_totals.empty:
+                all_categories.update(income_totals.index)
+            if not expense_totals.empty:
+                all_categories.update(expense_totals.index)
+
+            if not all_categories:
+                return None
+
+            # Create combined data
+            category_data = []
+            labels = []
+            colors = []
+            
+            for category in sorted(all_categories):
+                income_amount = income_totals.get(category, 0)
+                expense_amount = expense_totals.get(category, 0)
+                
+                if income_amount > 0:
+                    category_data.append(income_amount)
+                    labels.append(f"{category} (Income)")
+                    colors.append('#2ECC71')  # Green for income
+                
+                if expense_amount > 0:
+                    category_data.append(expense_amount)
+                    labels.append(f"{category} (Expense)")
+                    colors.append('#E74C3C')  # Red for expenses
+
+            if not category_data:
+                return None
+
+            # Create pie chart
             fig = px.pie(
-                values=category_totals.values,
-                names=category_totals.index,
-                title="Spending Distribution by Category (Click to Filter)",
-                color_discrete_sequence=px.colors.qualitative.Set3
+                values=category_data,
+                names=labels,
+                title="Income & Spending Distribution by Category",
+                color_discrete_sequence=colors if len(colors) == len(category_data) else px.colors.qualitative.Set3
             )
 
-            # Add custom data for click handling
             fig.update_traces(
                 textposition='inside',
                 textinfo='percent+label',
-                hovertemplate='<b>%{label}</b><br>Amount: ₹%{value:,.2f}<br>Percentage: %{percent}<br><i>Click to filter transactions</i><extra></extra>',
-                customdata=category_totals.index,
-                selector=dict(type='pie')
+                hovertemplate='<b>%{label}</b><br>Amount: ₹%{value:,.2f}<br>Percentage: %{percent}<extra></extra>'
             )
 
             fig.update_layout(

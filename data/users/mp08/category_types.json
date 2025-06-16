@@ -1,0 +1,14 @@
+{
+  "Salary": "income",
+  "Dividend": "income",
+  "Food": "expense",
+  "Transportation": "expense",
+  "Shopping": "expense",
+  "Utilities": "expense",
+  "Healthcare": "expense",
+  "Entertainment": "expense",
+  "Investment": "asset",
+  "EMI": "liability",
+  "Suspense": "expense",
+  "Others": "expense"
+}
