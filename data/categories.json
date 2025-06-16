@@ -1,66 +1,13 @@
+
 {
-  "Salary": {
-    "keywords": ["salary", "wages", "payroll", "income", "salaried", "sal credited"],
-    "type": "income"
-  },
-  "Dividend": {
-    "keywords": ["dividend", "nach", "div", "dividend income"],
-    "type": "income"
-  },
-  "Interest": {
-    "keywords": ["interest", "savings interest", "fd interest"],
-    "type": "income"
-  },
-  "Rent": {
-    "keywords": ["rent", "rental", "house rent", "flat rent", "apartment"],
-    "type": "expense"
-  },
-  "Food": {
-    "keywords": ["restaurant", "food", "dining", "cafe", "pizza", "burger", "swiggy", "zomato", "ola foods", "dominos", "kfc", "mcdonald"],
-    "type": "expense"
-  },
-  "Fuel": {
-    "keywords": ["petrol", "diesel", "fuel", "gas station", "bharat petroleum", "indian oil", "hp", "shell"],
-    "type": "expense"
-  },
-  "EMI": {
-    "keywords": ["emi", "loan", "installment", "repayment", "home loan", "car loan", "personal loan"],
-    "type": "liability"
-  },
-  "Investment": {
-    "keywords": ["mutual fund", "sip", "stocks", "shares", "investment", "zerodha", "groww", "upstox"],
-    "type": "asset"
-  },
-  "Utilities": {
-    "keywords": ["electricity", "water", "gas", "telephone", "internet", "broadband", "mobile bill"],
-    "type": "expense"
-  },
-  "Shopping": {
-    "keywords": ["amazon", "flipkart", "shopping", "purchase", "mall", "store", "retail"],
-    "type": "expense"
-  },
-  "Healthcare": {
-    "keywords": ["hospital", "medical", "doctor", "pharmacy", "medicine", "health"],
-    "type": "expense"
-  },
-  "Transportation": {
-    "keywords": ["uber", "ola", "taxi", "bus", "train", "metro", "auto"],
-    "type": "expense"
-  },
-  "Entertainment": {
-    "keywords": ["movie", "cinema", "netflix", "spotify", "gaming", "entertainment"],
-    "type": "expense"
-  },
-  "Insurance": {
-    "keywords": ["insurance", "premium", "policy", "life insurance", "health insurance"],
-    "type": "expense"
-  },
-  "Education": {
-    "keywords": ["school", "college", "education", "tuition", "course", "training"],
-    "type": "expense"
-  },
-  "Others": {
-    "keywords": ["miscellaneous", "other", "cash", "withdrawal", "transfer"],
-    "type": "expense"
-  }
+  "Salary": ["salary", "wage", "payroll", "income", "pay"],
+  "Food": ["restaurant", "food", "dining", "cafe", "kitchen", "meal", "swiggy", "zomato", "uber eats"],
+  "Transportation": ["uber", "ola", "taxi", "bus", "metro", "fuel", "petrol", "diesel", "parking"],
+  "Shopping": ["amazon", "flipkart", "myntra", "shopping", "purchase", "buy"],
+  "Utilities": ["electricity", "water", "gas", "internet", "mobile", "phone", "broadband"],
+  "Healthcare": ["hospital", "doctor", "medical", "pharmacy", "medicine", "health"],
+  "Entertainment": ["movie", "netflix", "spotify", "game", "entertainment", "cinema"],
+  "Investment": ["mutual fund", "sip", "stock", "investment", "dividend", "equity"],
+  "EMI": ["emi", "loan", "mortgage", "credit", "installment"],
+  "Others": ["misc", "other", "unknown"]
 }

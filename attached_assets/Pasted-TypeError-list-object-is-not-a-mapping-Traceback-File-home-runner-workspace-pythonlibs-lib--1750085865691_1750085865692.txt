@@ -1,0 +1,30 @@
+TypeError: 'list' object is not a mapping
+Traceback:
+File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/streamlit/runtime/scriptrunner/exec_code.py", line 121, in exec_func_with_error_handling
+    result = func()
+             ^^^^^^
+File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/streamlit/runtime/scriptrunner/script_runner.py", line 645, in code_to_exec
+    exec(code, module.__dict__)
+File "/home/runner/workspace/app.py", line 521, in <module>
+    main()
+File "/home/runner/workspace/app.py", line 489, in main
+    audit_log, rules_engine, cat_mgr) = init_components()
+                                        ^^^^^^^^^^^^^^^^^
+File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/streamlit/runtime/caching/cache_utils.py", line 219, in __call__
+    return self._get_or_create_cached_value(args, kwargs, spinner_message)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/streamlit/runtime/caching/cache_utils.py", line 261, in _get_or_create_cached_value
+    return self._handle_cache_miss(cache, value_key, func_args, func_kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/streamlit/runtime/caching/cache_utils.py", line 320, in _handle_cache_miss
+    computed_value = self._info.func(*func_args, **func_kwargs)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+File "/home/runner/workspace/app.py", line 35, in init_components
+    ai_categorizer = AICategorizer()
+                     ^^^^^^^^^^^^^^^
+File "/home/runner/workspace/utils/ai_categorizer.py", line 48, in __init__
+    self.category_patterns = self._initialize_category_patterns()
+                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+File "/home/runner/workspace/utils/ai_categorizer.py", line 211, in _initialize_category_patterns
+    all_categories = {**self.default_categories, **self.custom_categories}
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

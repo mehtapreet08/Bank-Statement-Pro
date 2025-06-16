@@ -1,6 +1,14 @@
+
 {
-  "income": "Money received, such as salary, rent, interest, etc.",
-  "expense": "Money spent, such as food, bills, travel, etc.",
-  "asset": "Something you own that adds value, like investments or savings",
-  "liability": "Something you owe, like loans or EMIs"
+  "Salary": "income",
+  "Dividend": "income", 
+  "Food": "expense",
+  "Transportation": "expense",
+  "Shopping": "expense",
+  "Utilities": "expense",
+  "Healthcare": "expense",
+  "Entertainment": "expense",
+  "Investment": "asset",
+  "EMI": "liability",
+  "Others": "expense"
 }

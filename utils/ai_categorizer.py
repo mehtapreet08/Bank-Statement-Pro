@@ -1,3 +1,4 @@
+
 import json
 import os
 import re
@@ -9,23 +10,31 @@ from datetime import datetime
 import numpy as np
 import openai
 
-        # Configure OpenRouter
+# Configure OpenRouter
 openai.api_key = "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"
 openai.api_base = "https://openrouter.ai/api/v1"
 
 class AICategorizer:
     def __init__(self):
+        # Ensure data directory exists
+        os.makedirs('data', exist_ok=True)
+        
         # File paths
         self.categories_file = 'data/categories.json'
         self.custom_categories_file = 'data/custom_categories.json'
         self.cache_file = 'data/categorization_cache.json'
+        self.category_types_file = 'data/category_types.json'
+        self.default_categories_file = 'data/default_categories.json'
+        
+        # Initialize files if they don't exist
+        self._initialize_data_files()
         
         # Load static data
         with open(self.categories_file, 'r') as f:
             self.categories = json.load(f)
 
         with open(self.custom_categories_file, 'r') as f:
-            self.custom_rules = json.load(f)
+            self.custom_categories = json.load(f)
 
         with open('data/category_types.json', 'r') as f:
             self.accounting_types = json.load(f)
@@ -35,29 +44,86 @@ class AICategorizer:
 
         # Load dynamic patterns + learning
         self.categorization_cache = self._load_categorization_cache()
-        self.custom_categories = self._load_custom_categories()
-        self.default_categories = self._load_default_categories()
+        
+        # Load custom categories - handle both dict and list formats
+        try:
+            with open(self.custom_categories_file, 'r') as f:
+                loaded_custom = json.load(f)
+                # Keep the loaded format (could be list or dict)
+                self.custom_categories = loaded_custom
+        except:
+            self.custom_categories = {}
+            
         self.category_patterns = self._initialize_category_patterns()
-        self.default_categories = self._load_default_categories()
 
         if not openai.api_key:
             print("⚠️ OpenAI API key not set. Falling back to rule-based categorization.")
-
-            with open('data/categories.json', 'r') as f:
-                self.categories = json.load(f)
-
-            with open('data/custom_categories.json', 'r') as f:
-                self.custom_rules = json.load(f)
-
-            with open('data/category_types.json', 'r') as f:
-                self.accounting_types = json.load(f)
-                self.categorization_cache = self._load_categorization_cache()
-
-
-    # def categorize_transactions(self, df):
-    #     df['Category'] = df.apply(lambda row: self.apply_rules(row['Narration']), axis=1)
-    #     df['CategoryType'] = df['Category'].map(self.accounting_types).fillna('Unknown')
-    #     return df
+    
+    def _initialize_data_files(self):
+        """Initialize all required JSON data files with default content"""
+        
+        # Categories file
+        if not os.path.exists(self.categories_file):
+            default_categories = {
+                "Salary": ["salary", "wage", "payroll", "income", "pay"],
+                "Food": ["restaurant", "food", "dining", "cafe", "kitchen", "meal", "swiggy", "zomato", "uber eats"],
+                "Transportation": ["uber", "ola", "taxi", "bus", "metro", "fuel", "petrol", "diesel", "parking"],
+                "Shopping": ["amazon", "flipkart", "myntra", "shopping", "purchase", "buy"],
+                "Utilities": ["electricity", "water", "gas", "internet", "mobile", "phone", "broadband"],
+                "Healthcare": ["hospital", "doctor", "medical", "pharmacy", "medicine", "health"],
+                "Entertainment": ["movie", "netflix", "spotify", "game", "entertainment", "cinema"],
+                "Investment": ["mutual fund", "sip", "stock", "investment", "dividend", "equity"],
+                "EMI": ["emi", "loan", "mortgage", "credit", "installment"],
+                "Others": ["misc", "other", "unknown"]
+            }
+            with open(self.categories_file, 'w') as f:
+                json.dump(default_categories, f, indent=2)
+        
+        # Custom categories file
+        if not os.path.exists(self.custom_categories_file):
+            default_custom_rules = [
+                {"pattern": "SALARY|WAGE|PAY.*ROLL", "category": "Salary"},
+                {"pattern": "UPI.*SWIGGY|ZOMATO|UBER.*EATS", "category": "Food"},
+                {"pattern": "DIVIDEND|DIV.*INCOME", "category": "Investment"},
+                {"pattern": "EMI|LOAN.*EMI|HDFC.*LOAN", "category": "EMI"}
+            ]
+            with open(self.custom_categories_file, 'w') as f:
+                json.dump(default_custom_rules, f, indent=2)
+        
+        # Category types file
+        if not os.path.exists(self.category_types_file):
+            category_types = {
+                "Salary": "income",
+                "Dividend": "income", 
+                "Food": "expense",
+                "Transportation": "expense",
+                "Shopping": "expense",
+                "Utilities": "expense",
+                "Healthcare": "expense",
+                "Entertainment": "expense",
+                "Investment": "asset",
+                "EMI": "liability",
+                "Others": "expense"
+            }
+            with open(self.category_types_file, 'w') as f:
+                json.dump(category_types, f, indent=2)
+        
+        # Default categories file
+        if not os.path.exists(self.default_categories_file):
+            default_categories_detailed = {
+                "Salary": {"keywords": ["salary", "wage", "payroll", "income", "pay"], "type": "income"},
+                "Food": {"keywords": ["restaurant", "food", "dining", "cafe", "kitchen", "meal", "swiggy", "zomato", "uber eats"], "type": "expense"},
+                "Transportation": {"keywords": ["uber", "ola", "taxi", "bus", "metro", "fuel", "petrol", "diesel", "parking"], "type": "expense"},
+                "Shopping": {"keywords": ["amazon", "flipkart", "myntra", "shopping", "purchase", "buy"], "type": "expense"},
+                "Utilities": {"keywords": ["electricity", "water", "gas", "internet", "mobile", "phone", "broadband"], "type": "expense"},
+                "Healthcare": {"keywords": ["hospital", "doctor", "medical", "pharmacy", "medicine", "health"], "type": "expense"},
+                "Entertainment": {"keywords": ["movie", "netflix", "spotify", "game", "entertainment", "cinema"], "type": "expense"},
+                "Investment": {"keywords": ["mutual fund", "sip", "stock", "investment", "dividend", "equity"], "type": "asset"},
+                "EMI": {"keywords": ["emi", "loan", "mortgage", "credit", "installment"], "type": "liability"},
+                "Others": {"keywords": ["misc", "other", "unknown"], "type": "expense"}
+            }
+            with open(self.default_categories_file, 'w') as f:
+                json.dump(default_categories_detailed, f, indent=2)
 
     def apply_rules(self, narration):
         for rule in self.custom_rules:
@@ -90,7 +156,6 @@ class AICategorizer:
             print(f"AI Error: {e}")
             return 'Others'
 
-        
     def _load_default_categories(self) -> Dict[str, Dict]:
         """Load default categories from JSON file, fallback to minimal default if missing"""
         default_path = "data/default_categories.json"
@@ -110,7 +175,6 @@ class AICategorizer:
             }
         }
 
-    
     def _load_custom_categories(self) -> Dict[str, Dict]:
         """Load user-defined custom categories"""
         if os.path.exists(self.custom_categories_file):
@@ -152,10 +216,8 @@ class AICategorizer:
         """Initialize regex patterns for each category"""
         patterns = {}
         
-        # Combine default and custom categories
-        all_categories = {**self.default_categories, **self.custom_categories}
-        
-        for category, category_data in all_categories.items():
+        # Process default categories
+        for category, category_data in self.default_categories.items():
             # Handle both old and new format
             if isinstance(category_data, dict):
                 keywords = category_data.get('keywords', [])
@@ -171,6 +233,22 @@ class AICategorizer:
             
             if pattern_strings:
                 patterns[category] = re.compile('|'.join(pattern_strings), re.IGNORECASE)
+        
+        # Process custom categories (if they exist and are in dict format)
+        if isinstance(self.custom_categories, dict):
+            for category, category_data in self.custom_categories.items():
+                if isinstance(category_data, dict):
+                    keywords = category_data.get('keywords', [])
+                else:
+                    keywords = category_data
+                
+                pattern_strings = []
+                for keyword in keywords:
+                    escaped_keyword = re.escape(keyword.lower())
+                    pattern_strings.append(f"\\b{escaped_keyword}\\b")
+                
+                if pattern_strings:
+                    patterns[category] = re.compile('|'.join(pattern_strings), re.IGNORECASE)
         
         return patterns
     
@@ -349,6 +427,10 @@ class AICategorizer:
     
     def add_custom_category(self, category_name: str, keywords: List[str], category_type: str = "expense"):
         """Add a new custom category with keywords and type"""
+        # Convert to dict format if currently list format
+        if not isinstance(self.custom_categories, dict):
+            self.custom_categories = {}
+        
         self.custom_categories[category_name] = {
             "keywords": keywords,
             "type": category_type
@@ -363,9 +445,8 @@ class AICategorizer:
     
     def _recategorize_existing_transactions(self):
         """Re-categorize existing transactions when new rules are added"""
-        from .data_manager import DataManager
-        
         try:
+            from .data_manager import DataManager
             data_mgr = DataManager()
             existing_df = data_mgr.load_transactions()
             
@@ -378,8 +459,16 @@ class AICategorizer:
     
     def delete_custom_category(self, category_name: str):
         """Delete a custom category"""
-        if category_name in self.custom_categories:
+        if isinstance(self.custom_categories, dict) and category_name in self.custom_categories:
             del self.custom_categories[category_name]
+            self._save_custom_categories()
+            
+            # Update category patterns
+            self.category_patterns = self._initialize_category_patterns()
+        elif isinstance(self.custom_categories, list):
+            # Remove all rules for this category
+            self.custom_categories = [rule for rule in self.custom_categories 
+                                    if rule.get('category') != category_name]
             self._save_custom_categories()
             
             # Update category patterns
@@ -387,7 +476,18 @@ class AICategorizer:
     
     def get_all_categories(self) -> List[str]:
         """Get list of all available categories"""
-        return list(self.default_categories.keys()) + list(self.custom_categories.keys())
+        default_cats = list(self.default_categories.keys())
+        
+        # Handle custom categories - could be dict or list format
+        if isinstance(self.custom_categories, dict):
+            custom_cats = list(self.custom_categories.keys())
+        elif isinstance(self.custom_categories, list):
+            # If it's a list of rules, extract unique categories
+            custom_cats = list(set([rule.get('category', 'Others') for rule in self.custom_categories if isinstance(rule, dict)]))
+        else:
+            custom_cats = []
+        
+        return default_cats + custom_cats
     
     def get_default_categories(self) -> List[str]:
         """Get list of default categories"""
@@ -395,14 +495,34 @@ class AICategorizer:
     
     def get_custom_categories(self) -> Dict[str, Dict]:
         """Get custom categories with their keywords and types"""
-        return self.custom_categories.copy()
+        if isinstance(self.custom_categories, dict):
+            return self.custom_categories.copy()
+        else:
+            # Convert list format to dict format for display
+            result = {}
+            for rule in self.custom_categories:
+                if isinstance(rule, dict) and 'category' in rule:
+                    category = rule['category']
+                    if category not in result:
+                        result[category] = {
+                            'keywords': [rule.get('pattern', '')],
+                            'type': 'expense'
+                        }
+                    else:
+                        result[category]['keywords'].append(rule.get('pattern', ''))
+            return result
     
     def get_category_type(self, category_name: str) -> str:
         """Get the type of a specific category"""
         if category_name in self.default_categories:
             return self.default_categories[category_name].get('type', 'expense')
-        elif category_name in self.custom_categories:
+        elif isinstance(self.custom_categories, dict) and category_name in self.custom_categories:
             return self.custom_categories[category_name].get('type', 'expense')
+        elif isinstance(self.custom_categories, list):
+            # Find first rule with this category
+            for rule in self.custom_categories:
+                if isinstance(rule, dict) and rule.get('category') == category_name:
+                    return rule.get('type', 'expense')
         return 'expense'
     
     def get_cache_statistics(self) -> Dict:
