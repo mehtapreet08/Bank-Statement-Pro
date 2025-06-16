@@ -51,7 +51,9 @@ class AICategorizer:
                 loaded_custom = json.load(f)
                 # Keep the loaded format (could be list or dict)
                 self.custom_categories = loaded_custom
-        except:
+                print(f"Debug: Loaded custom categories: {self.custom_categories}")
+        except Exception as e:
+            print(f"Debug: Error loading custom categories: {e}")
             self.custom_categories = {}
             
         self.category_patterns = self._initialize_category_patterns()
@@ -227,9 +229,11 @@ class AICategorizer:
             # Create regex pattern for each category
             pattern_strings = []
             for keyword in keywords:
-                # Escape special regex characters and add word boundaries
-                escaped_keyword = re.escape(keyword.lower())
-                pattern_strings.append(f"\\b{escaped_keyword}\\b")
+                if keyword:  # Skip empty keywords
+                    # Escape special regex characters but allow partial matches
+                    escaped_keyword = re.escape(str(keyword).lower())
+                    # Use more flexible matching - not just word boundaries
+                    pattern_strings.append(f"{escaped_keyword}")
             
             if pattern_strings:
                 patterns[category] = re.compile('|'.join(pattern_strings), re.IGNORECASE)
@@ -239,13 +243,20 @@ class AICategorizer:
             for category, category_data in self.custom_categories.items():
                 if isinstance(category_data, dict):
                     keywords = category_data.get('keywords', [])
+                    # Ensure keywords is a list
+                    if not isinstance(keywords, list):
+                        keywords = [keywords] if keywords else []
                 else:
-                    keywords = category_data
+                    # Handle old format
+                    keywords = category_data if isinstance(category_data, list) else [category_data]
                 
                 pattern_strings = []
                 for keyword in keywords:
-                    escaped_keyword = re.escape(keyword.lower())
-                    pattern_strings.append(f"\\b{escaped_keyword}\\b")
+                    if keyword:  # Skip empty keywords
+                        # Escape special regex characters but allow partial matches
+                        escaped_keyword = re.escape(str(keyword).lower())
+                        # Use more flexible matching - not just word boundaries
+                        pattern_strings.append(f"{escaped_keyword}")
                 
                 if pattern_strings:
                     patterns[category] = re.compile('|'.join(pattern_strings), re.IGNORECASE)
@@ -260,19 +271,54 @@ class AICategorizer:
             transactions_df: DataFrame with transaction data
             
         Returns:
-            DataFrame with added 'category' and 'ai_categorized' columns
+            DataFrame with added 'category', 'ai_categorized', and 'similarity_score' columns
         """
         df = transactions_df.copy()
         
-        # Add columns for category and AI flag
-        categorization_results = df['narration'].apply(self._categorize_single_transaction_with_flag)
+        # Add columns for category, AI flag, and similarity score
+        categorization_results = df['narration'].apply(self._categorize_single_transaction_with_similarity)
         df['category'] = [result[0] for result in categorization_results]
         df['ai_categorized'] = [result[1] for result in categorization_results]
+        df['similarity_score'] = [result[2] for result in categorization_results]
         
         # Save any new patterns learned during categorization
         self._save_categorization_cache()
         
         return df
+    
+    def _categorize_single_transaction_with_similarity(self, narration: str) -> tuple:
+        """Categorize a single transaction and return category, AI flag, and similarity score"""
+        narration_lower = narration.lower().strip()
+        similarity_score = 0
+        
+        # 1. Check exact cache matches first (highest priority) - not AI
+        if narration_lower in self.categorization_cache["patterns"]:
+            return self.categorization_cache["patterns"][narration_lower], False, 100
+        
+        # 2. Check user corrections cache - not AI
+        if narration_lower in self.categorization_cache["corrections"]:
+            return self.categorization_cache["corrections"][narration_lower], False, 100
+        
+        # 3. Apply similarity-based categorization first
+        category, similarity_score = self._apply_similarity_based_categorization(narration_lower)
+        
+        # 4. If no similarity match, apply rule-based categorization
+        if category == "Others":
+            category = self._apply_rule_based_categorization(narration_lower)
+            similarity_score = 0
+        
+        # 5. If no rule match, try fuzzy matching against cached patterns
+        if category == "Others":
+            fuzzy_category = self._apply_fuzzy_matching(narration_lower)
+            if fuzzy_category:
+                category = fuzzy_category
+                similarity_score = 80  # Assume 80% for fuzzy matches
+        
+        # 6. Cache the result for future use
+        self.categorization_cache["patterns"][narration_lower] = category
+        
+        # Return category, AI flag, and similarity score
+        return category, True, similarity_score
     
     def _categorize_single_transaction_with_flag(self, narration: str) -> tuple:
         """Categorize a single transaction and return if it was AI categorized"""
@@ -286,16 +332,20 @@ class AICategorizer:
         if narration_lower in self.categorization_cache["corrections"]:
             return self.categorization_cache["corrections"][narration_lower], False
         
-        # 3. Apply rule-based categorization - this is AI
-        category = self._apply_rule_based_categorization(narration_lower)
+        # 3. Apply similarity-based categorization first
+        category, similarity_score = self._apply_similarity_based_categorization(narration_lower)
         
-        # 4. If no rule match, try fuzzy matching against cached patterns - this is AI
+        # 4. If no similarity match, apply rule-based categorization
+        if category == "Others":
+            category = self._apply_rule_based_categorization(narration_lower)
+        
+        # 5. If no rule match, try fuzzy matching against cached patterns
         if category == "Others":
             fuzzy_category = self._apply_fuzzy_matching(narration_lower)
             if fuzzy_category:
                 category = fuzzy_category
         
-        # 5. Cache the result for future use
+        # 6. Cache the result for future use
         self.categorization_cache["patterns"][narration_lower] = category
         
         # Return category and AI flag (True if it was AI categorized)
@@ -337,6 +387,121 @@ class AICategorizer:
         # Special rules for amount-based categorization
         return self._apply_special_rules(narration)
     
+    def _apply_similarity_based_categorization(self, narration: str) -> tuple:
+        """Apply similarity-based categorization using keyword matching"""
+        best_category = "Others"
+        best_similarity = 0
+        
+        # Check against all categories (default + custom)
+        all_categories = {}
+        
+        # Add default categories
+        for category, category_data in self.default_categories.items():
+            if isinstance(category_data, dict):
+                keywords = category_data.get('keywords', [])
+            else:
+                keywords = category_data
+            all_categories[category] = keywords
+        
+        # Add custom categories - ensure proper format handling
+        if isinstance(self.custom_categories, dict):
+            for category, category_data in self.custom_categories.items():
+                if isinstance(category_data, dict):
+                    keywords = category_data.get('keywords', [])
+                    # Ensure keywords is a list
+                    if not isinstance(keywords, list):
+                        keywords = [keywords] if keywords else []
+                else:
+                    # Handle old list format
+                    keywords = category_data if isinstance(category_data, list) else [category_data]
+                
+                # Only add if we have valid keywords
+                if keywords and any(kw for kw in keywords if kw):
+                    all_categories[category] = keywords
+        elif isinstance(self.custom_categories, list):
+            # Handle old list format with patterns
+            for rule in self.custom_categories:
+                if isinstance(rule, dict) and 'category' in rule:
+                    category = rule['category']
+                    pattern = rule.get('pattern', '')
+                    if pattern:
+                        if category not in all_categories:
+                            all_categories[category] = [pattern]
+                        else:
+                            all_categories[category].append(pattern)
+        
+        # Calculate similarity for each category
+        for category, keywords in all_categories.items():
+            if not keywords:  # Skip empty keyword lists
+                continue
+                
+            for keyword in keywords:
+                if not keyword:  # Skip empty keywords
+                    continue
+                    
+                similarity = self._calculate_similarity(narration, str(keyword).lower())
+                # Debug: Print matching details for troubleshooting
+                if similarity > 0:
+                    print(f"Debug: '{narration}' vs '{keyword}' in category '{category}' = {similarity}%")
+                
+                if similarity > best_similarity and similarity >= 20:  # Minimum 20% similarity
+                    best_similarity = similarity
+                    best_category = category
+        
+        return best_category, best_similarity
+    
+    def _calculate_similarity(self, narration: str, keyword: str) -> int:
+        """Calculate similarity percentage between narration and keyword"""
+        if not keyword or not narration:
+            return 0
+            
+        narration_lower = narration.lower().strip()
+        keyword_lower = keyword.lower().strip()
+        
+        # Remove special characters and normalize spaces
+        narration_clean = re.sub(r'[^\w\s]', ' ', narration_lower)
+        keyword_clean = re.sub(r'[^\w\s]', ' ', keyword_lower)
+        
+        narration_words = set(narration_clean.split())
+        keyword_words = set(keyword_clean.split())
+        
+        if not keyword_words:
+            return 0
+        
+        # Check for exact keyword match in narration (case-insensitive)
+        if keyword_lower in narration_lower:
+            return 100
+        
+        # Check for exact match after cleaning
+        if keyword_clean in narration_clean:
+            return 100
+        
+        # Check for individual keyword word matches in narration
+        for keyword_word in keyword_words:
+            if keyword_word in narration_lower:
+                return 100
+        
+        # Check for word overlap
+        common_words = narration_words & keyword_words
+        if common_words:
+            similarity = round((len(common_words) / len(keyword_words)) * 100)
+            return max(similarity, 85)  # Give higher weight to word matches
+        
+        # Check for partial word matches (case-insensitive)
+        for narration_word in narration_words:
+            for keyword_word in keyword_words:
+                if len(keyword_word) >= 3:  # Only for meaningful words
+                    if keyword_word in narration_word or narration_word in keyword_word:
+                        return 80  # Partial match
+        
+        # Check for substring matches in either direction
+        for keyword_word in keyword_words:
+            if len(keyword_word) >= 3:
+                if keyword_word in narration_clean or any(keyword_word in word for word in narration_words):
+                    return 75
+        
+        return 0
+
     def _apply_special_rules(self, narration: str) -> str:
         """Apply special categorization rules"""
         # ATM withdrawals
@@ -457,6 +622,41 @@ class AICategorizer:
         except Exception as e:
             print(f"Error re-categorizing existing transactions: {str(e)}")
     
+    def update_custom_category(self, category_name: str, keywords: List[str], category_type: str = "expense"):
+        """Update an existing custom category"""
+        # Convert to dict format if currently list format
+        if not isinstance(self.custom_categories, dict):
+            self.custom_categories = {}
+        
+        self.custom_categories[category_name] = {
+            "keywords": keywords,
+            "type": category_type
+        }
+        self._save_custom_categories()
+        
+        # Update category patterns
+        self.category_patterns = self._initialize_category_patterns()
+    
+    def update_default_category(self, category_name: str, keywords: List[str], category_type: str = "expense"):
+        """Update an existing default category"""
+        if category_name in self.default_categories:
+            self.default_categories[category_name] = {
+                "keywords": keywords,
+                "type": category_type
+            }
+            self._save_default_categories()
+            
+            # Update category patterns
+            self.category_patterns = self._initialize_category_patterns()
+    
+    def _save_default_categories(self):
+        """Save default categories to file"""
+        try:
+            with open(self.default_categories_file, 'w') as f:
+                json.dump(self.default_categories, f, indent=2)
+        except Exception as e:
+            print(f"Error saving default categories: {str(e)}")
+
     def delete_custom_category(self, category_name: str):
         """Delete a custom category"""
         if isinstance(self.custom_categories, dict) and category_name in self.custom_categories:
@@ -489,9 +689,20 @@ class AICategorizer:
         
         return default_cats + custom_cats
     
-    def get_default_categories(self) -> List[str]:
-        """Get list of default categories"""
-        return list(self.default_categories.keys())
+    def get_default_categories(self) -> Dict[str, Dict]:
+        """Get default categories with their keywords and types"""
+        # Ensure we always return a dict format
+        if isinstance(self.default_categories, dict):
+            return self.default_categories.copy()
+        else:
+            # Convert old list format to new dict format
+            converted = {}
+            for category in self.default_categories:
+                converted[category] = {
+                    "keywords": self.categories.get(category, []),
+                    "type": "expense"
+                }
+            return converted
     
     def get_custom_categories(self) -> Dict[str, Dict]:
         """Get custom categories with their keywords and types"""
@@ -575,3 +786,160 @@ class AICategorizer:
             return True
         except Exception:
             return False
+    
+    def analyze_narration_with_ai(self, narration: str) -> dict:
+        """Use AI to analyze narration and suggest category with reasoning"""
+        if not openai.api_key:
+            return {
+                "suggested_category": "Others",
+                "reasoning": "AI analysis not available - API key not configured",
+                "confidence": 0
+            }
+        
+        # Get all available categories
+        all_categories = list(self.get_all_categories())
+        
+        prompt = f"""
+        Analyze this bank transaction narration and provide:
+        1. What the transaction is likely for (purpose/merchant type)
+        2. Suggest the most appropriate category from the list
+        3. Confidence level (0-100)
+
+        Available categories: {', '.join(all_categories)}
+        
+        Narration: "{narration}"
+        
+        Respond in JSON format:
+        {{
+            "purpose": "brief description of what this transaction is for",
+            "suggested_category": "most appropriate category from the list",
+            "reasoning": "why this category fits",
+            "confidence": 85
+        }}
+        """
+
+        try:
+            response = openai.ChatCompletion.create(
+                model="google/gemma-3n-e4b-it:free",
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.2,
+                max_tokens=150
+            )
+            
+            result_text = response['choices'][0]['message']['content'].strip()
+            
+            # Try to parse JSON response
+            import json
+            try:
+                result = json.loads(result_text)
+                # Validate suggested category is in our list
+                if result.get('suggested_category') not in all_categories:
+                    result['suggested_category'] = 'Others'
+                return result
+            except json.JSONDecodeError:
+                # Fallback if JSON parsing fails
+                return {
+                    "purpose": "Could not analyze",
+                    "suggested_category": "Others", 
+                    "reasoning": "AI response parsing failed",
+                    "confidence": 0
+                }
+                
+        except Exception as e:
+            print(f"AI Analysis Error: {e}")
+            return {
+                "purpose": "Analysis failed",
+                "suggested_category": "Others",
+                "reasoning": f"AI error: {str(e)}",
+                "confidence": 0
+            }
+
+    def analyze_narration_with_ai(self, narration: str) -> dict:
+        """Use AI to analyze narration and suggest category with reasoning"""
+        if not openai.api_key:
+            return {
+                "purpose": "AI analysis not available - API key not configured",
+                "suggested_category": "Others",
+                "reasoning": "AI analysis not available - API key not configured",
+                "confidence": 0
+            }
+        
+        # Get all available categories
+        all_categories = list(self.get_all_categories())
+        
+        # Get custom categories for context
+        custom_cats_info = ""
+        if isinstance(self.custom_categories, dict):
+            for cat, cat_data in self.custom_categories.items():
+                keywords = cat_data.get('keywords', []) if isinstance(cat_data, dict) else []
+                if keywords:
+                    custom_cats_info += f"\n- {cat}: {', '.join(keywords)}"
+        
+        prompt = f"""
+        Analyze this bank transaction narration and provide:
+        1. What the transaction is likely for (purpose/merchant type)
+        2. Suggest the most appropriate category from the list
+        3. Confidence level (0-100)
+
+        Available categories: {', '.join(all_categories)}
+        
+        Custom category keywords for reference:{custom_cats_info}
+        
+        Narration: "{narration}"
+        
+        Respond in JSON format:
+        {{
+            "purpose": "brief description of what this transaction is for",
+            "suggested_category": "most appropriate category from the list",
+            "reasoning": "why this category fits",
+            "confidence": 85
+        }}
+        """
+
+        try:
+            response = openai.ChatCompletion.create(
+                model="google/gemma-3n-e4b-it:free",
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.2,
+                max_tokens=150
+            )
+            
+            result_text = response['choices'][0]['message']['content'].strip()
+            
+            # Try to parse JSON response
+            try:
+                result = json.loads(result_text)
+                # Validate suggested category is in our list
+                if result.get('suggested_category') not in all_categories:
+                    result['suggested_category'] = 'Others'
+                return result
+            except json.JSONDecodeError:
+                # Fallback if JSON parsing fails
+                return {
+                    "purpose": "Could not analyze",
+                    "suggested_category": "Others", 
+                    "reasoning": "AI response parsing failed",
+                    "confidence": 0
+                }
+                
+        except Exception as e:
+            print(f"AI Analysis Error: {e}")
+            return {
+                "purpose": "Analysis failed",
+                "suggested_category": "Others",
+                "reasoning": f"AI error: {str(e)}",
+                "confidence": 0
+            }
+
+    def test_categorization(self, test_narrations=None):
+        """Test categorization with sample narrations"""
+        if test_narrations is None:
+            test_narrations = ["tution", "K Singhvi and Associates", "Vegetables"]
+        
+        print("=== Categorization Test ===")
+        print(f"Available custom categories: {list(self.custom_categories.keys()) if isinstance(self.custom_categories, dict) else 'List format'}")
+        
+        for narration in test_narrations:
+            category, ai_flag, similarity = self._categorize_single_transaction_with_similarity(narration)
+            print(f"'{narration}' -> '{category}' (AI: {ai_flag}, Similarity: {similarity}%)")
+        print("=== End Test ===\n")

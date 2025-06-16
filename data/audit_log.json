@@ -1,9 +1,9 @@
 {
-  "created": "2025-06-16T14:43:06.357796",
+  "created": "2025-06-16T21:48:39.182131",
   "version": "1.0",
   "entries": [
     {
-      "timestamp": "2025-06-16T14:43:06.358637",
+      "timestamp": "2025-06-16T21:48:39.229264",
       "action": "DATA_CLEAR",
       "details": {
         "data_type": "all_data",
@@ -12,35 +12,11 @@
       "metadata": {}
     },
     {
-      "timestamp": "2025-06-16T14:43:24.050003",
-      "action": "PDF_UPLOAD",
-      "details": {
-        "filename": "stat.pdf",
-        "transaction_count": 242,
-        "status": "success"
-      },
-      "metadata": {
-        "file_size": "unknown",
-        "processing_time": "unknown"
-      }
-    },
-    {
-      "timestamp": "2025-06-16T14:43:51.168163",
-      "action": "CATEGORIZATION_CHANGE",
-      "details": {
-        "narration": "04-08-2023 UPIAB/321674926538 S77001433 - 6,000.00 31,490.00",
-        "old_category": "Transfer",
-        "new_category": "Others",
-        "change_type": "manual_correction"
-      },
-      "metadata": {}
-    },
-    {
-      "timestamp": "2025-06-16T15:02:04.730138",
+      "timestamp": "2025-06-16T21:49:02.005176",
       "action": "PDF_UPLOAD",
       "details": {
         "filename": "Book1.xlsx",
-        "transaction_count": 5,
+        "transaction_count": 82,
         "status": "success"
       },
       "metadata": {
@@ -49,5 +25,5 @@
       }
     }
   ],
-  "cleared_at": "2025-06-16T14:43:06.357802"
+  "cleared_at": "2025-06-16T21:48:39.182131"
 }

@@ -14,14 +14,15 @@ import json
 
 # Import utility modules
 from utils.pdf_processor import PDFProcessor
-fromutils.excel_processor import ExcelProcessor
+from utils.excel_processor import ExcelProcessor
 from utils.transaction_parser import TransactionParser
 from utils.ai_categorizer import AICategorizer
 from utils.data_manager import DataManager
 from utils.chart_generator import ChartGenerator
 from utils.audit_logger import AuditLogger
 from utils.rules_engine import RulesEngine
-from utils.category_manager import CategoryManager
+
+
 
 
 
@@ -37,9 +38,8 @@ def init_components():
     chart_generator = ChartGenerator()
     audit_logger = AuditLogger()
     rules_engine = RulesEngine()
-    category_manager = CategoryManager()
     return (pdf_processor, excel_processor, transaction_parser, ai_categorizer, data_manager, 
-            chart_generator, audit_logger, rules_engine, category_manager)
+            chart_generator, audit_logger, rules_engine)
 
 # Initialize session state
 def init_session_state():
@@ -185,7 +185,26 @@ def render_dashboard_view(data_mgr, chart_gen):
         st.subheader("💰 Spending by Category")
         category_chart = chart_gen.create_category_pie_chart(df)
         if category_chart:
-            st.plotly_chart(category_chart, use_container_width=True)
+            # Handle pie chart clicks for filtering
+            clicked_data = st.plotly_chart(category_chart, use_container_width=True, on_select="rerun", key="category_pie")
+            
+            # Check if a category was clicked using selection state
+            if 'category_pie' in st.session_state and st.session_state.category_pie:
+                selection = st.session_state.category_pie.get('selection', {})
+                if selection and selection.get('points'):
+                    point = selection['points'][0]
+                    selected_category = point.get('label', '')
+                    if selected_category:
+                        st.session_state.selected_category_filter = selected_category
+                        st.info(f"📌 Selected category: **{selected_category}**")
+                        st.markdown("👇 **Go to Transaction Details view to edit these transactions**")
+                        
+                        # Add button to clear selection
+                        if st.button("Clear Selection", key="clear_category_selection"):
+                            if 'selected_category_filter' in st.session_state:
+                                del st.session_state.selected_category_filter
+                            st.session_state.category_pie = {}
+                            st.rerun()
 
     with col2:
         st.subheader("📈 Monthly Trend")
@@ -220,31 +239,40 @@ def render_transaction_details_view(data_mgr, ai_cat, audit_log):
 
     # Category filter
     categories = ['All'] + sorted(df['category'].unique().tolist())
-    selected_category = st.selectbox("Filter by Category", categories)
+    
+    # Check if a category was selected from the pie chart
+    default_category = 'All'
+    if hasattr(st.session_state, 'selected_category_filter') and st.session_state.selected_category_filter in categories:
+        default_category = st.session_state.selected_category_filter
+        # Clear the filter after using it
+        del st.session_state.selected_category_filter
+    
+    selected_category = st.selectbox("Filter by Category", categories, 
+                                   index=categories.index(default_category) if default_category in categories else 0)
 
     # Date range filter
     col1, col2 = st.columns(2)
     with col1:
         try:
-                # Try to parse dates with multiple formats
-                df['date_parsed'] = pd.to_datetime(df['date'], format='mixed', errors='coerce')
-                min_date = df['date_parsed'].min()
-                if pd.isna(min_date):
-                    min_date = pd.Timestamp.now() - pd.Timedelta(days=30)
-                start_date = st.date_input("From Date", value=min_date)
-            except:
-                start_date = st.date_input("From Date", value=pd.Timestamp.now() - pd.Timedelta(days=30))
+            # Try to parse dates with multiple formats
+            df['date_parsed'] = pd.to_datetime(df['date'], format='mixed', errors='coerce')
+            min_date = df['date_parsed'].min()
+            if pd.isna(min_date):
+                min_date = pd.Timestamp.now() - pd.Timedelta(days=30)
+            start_date = st.date_input("From Date", value=min_date)
+        except:
+            start_date = st.date_input("From Date", value=pd.Timestamp.now() - pd.Timedelta(days=30))
     with col2:
         try:
-                # Try to parse dates with multiple formats
-                if 'date_parsed' not in df.columns:
-                    df['date_parsed'] = pd.to_datetime(df['date'], format='mixed', errors='coerce')
-                max_date = df['date_parsed'].max()
-                if pd.isna(max_date):
-                    max_date = pd.Timestamp.now()
-                end_date = st.date_input("To Date", value=max_date)
-            except:
-                end_date = st.date_input("To Date", value=pd.Timestamp.now())
+            # Try to parse dates with multiple formats
+            if 'date_parsed' not in df.columns:
+                df['date_parsed'] = pd.to_datetime(df['date'], format='mixed', errors='coerce')
+            max_date = df['date_parsed'].max()
+            if pd.isna(max_date):
+                max_date = pd.Timestamp.now()
+            end_date = st.date_input("To Date", value=max_date)
+        except:
+            end_date = st.date_input("To Date", value=pd.Timestamp.now())
 
     # Filter data
     filtered_df = df.copy()
@@ -265,8 +293,14 @@ def render_transaction_details_view(data_mgr, ai_cat, audit_log):
 
     # Display editable transactions
     for idx, row in filtered_df.iterrows():
-        # Check if transaction was AI categorized
-        ai_label = " 🤖 AI" if row.get('ai_categorized', False) else ""
+        # Check if transaction was AI categorized and show similarity score
+        similarity_score = row.get('similarity_score', 0)
+        if row.get('ai_categorized', False) and similarity_score > 0:
+            ai_label = f" ({similarity_score}%)"
+        elif row.get('ai_categorized', False):
+            ai_label = " 🤖 AI"
+        else:
+            ai_label = ""
 
         with st.expander(f"{row['date']} - {row['narration'][:50]}... - ₹{row['amount']:,.2f}{ai_label}"):
             col1, col2, col3 = st.columns([2, 1, 1])
@@ -275,8 +309,19 @@ def render_transaction_details_view(data_mgr, ai_cat, audit_log):
                 st.text(f"Narration: {row['narration']}")
                 st.text(f"Amount: ₹{row['amount']:,.2f}")
                 st.text(f"Source: {row['source_file']}")
-                if row.get('ai_categorized', False):
+                similarity_score = row.get('similarity_score', 0)
+                if row.get('ai_categorized', False) and similarity_score > 0:
+                    st.caption(f"📊 Auto-categorized with {similarity_score}% similarity")
+                elif row.get('ai_categorized', False):
                     st.caption("🤖 Categorized by AI")
+                
+                # AI Analysis button
+                if st.button("🤖 Analyze with AI", key=f"analyze_{idx}"):
+                    with st.spinner("Analyzing transaction..."):
+                        analysis = ai_cat.analyze_narration_with_ai(row['narration'])
+                        st.info(f"**Purpose:** {analysis.get('purpose', 'Unknown')}")
+                        st.info(f"**AI Suggests:** {analysis.get('suggested_category', 'Others')} (Confidence: {analysis.get('confidence', 0)}%)")
+                        st.info(f"**Reasoning:** {analysis.get('reasoning', 'No reasoning provided')}")
 
             with col2:
                 current_category = row['category']
@@ -306,20 +351,9 @@ def render_transaction_details_view(data_mgr, ai_cat, audit_log):
                         st.success(f"Updated category to {new_category}")
                         st.rerun()
 
-def render_category_management_view(ai_cat, audit_log, cat_mgr):
+def render_category_management_view(ai_cat, audit_log):
     """Render the category management view"""
     st.header("🏷️ Category Management")
-
-    # Add categorization rules
-    st.subheader("Add Categorization Rules")
-    with st.form("Add New Categorization Rule"):
-        pattern = st.text_input("Rule Pattern (Regex)", help="Example: NACH/.*/DIV")
-        category = st.selectbox("Select Category", options=["Salary", "Dividend", "Food", "Investment", "EMI", "Others"])
-        submit = st.form_submit_button("➕ Add Rule and Apply")
-
-        if submit and pattern:
-            st.session_state.transactions = cat_mgr.add_and_apply_rule(pattern, category, st.session_state.transactions)
-            st.success("✅ Rule added and applied to all matching transactions.")
 
     # Custom category creation
     st.subheader("Create Custom Category")
@@ -334,25 +368,89 @@ def render_category_management_view(ai_cat, audit_log, cat_mgr):
     with col3:
         category_type = st.selectbox("Category Type", ["income", "expense", "asset", "liability"], index=1)
 
-    if st.button("Add Custom Category"):
-        if new_category_name and new_category_keywords:
-            keywords_list = [kw.strip() for kw in new_category_keywords.split(',')]
-            ai_cat.add_custom_category(new_category_name, keywords_list, category_type)
-            audit_log.log_category_creation(new_category_name, keywords_list)
-            st.success(f"Added custom category: {new_category_name} ({category_type})")
-            st.rerun()
-        else:
-            st.error("Please provide both category name and keywords")
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("Add Custom Category"):
+            if new_category_name and new_category_keywords:
+                keywords_list = [kw.strip() for kw in new_category_keywords.split(',')]
+                ai_cat.add_custom_category(new_category_name, keywords_list, category_type)
+                audit_log.log_category_creation(new_category_name, keywords_list)
+                st.success(f"Added custom category: {new_category_name} ({category_type})")
+                st.rerun()
+            else:
+                st.error("Please provide both category name and keywords")
+    
+    with col2:
+        if st.button("🔄 Refresh Transactions", help="Re-categorize all transactions with new categories"):
+            if not st.session_state.transactions.empty:
+                # Clear the categorization cache to force fresh categorization
+                ai_cat.categorization_cache["patterns"] = {}
+                ai_cat._save_categorization_cache()
+                
+                # Reload and update category patterns
+                ai_cat.category_patterns = ai_cat._initialize_category_patterns()
+                
+                # Re-categorize all transactions
+                updated_df = ai_cat.categorize_transactions(st.session_state.transactions)
+                st.session_state.transactions = updated_df
+                from utils.data_manager import DataManager
+                data_mgr = DataManager()
+                data_mgr.save_transactions(updated_df)
+                st.success("✅ All transactions refreshed with updated categories!")
+                st.rerun()
+            else:
+                st.warning("No transactions available to refresh.")
 
     # Display existing categories
     st.subheader("Existing Categories")
 
     # Default categories
-    st.write("**Default Categories:**")
+    st.write("**Default Categories (Editable):**")
     default_categories = ai_cat.get_default_categories()
-    for category in default_categories:
-        category_type = ai_cat.get_category_type(category)
-        st.write(f"• {category} ({category_type})")
+    
+    # Ensure we have a dictionary to iterate over
+    if isinstance(default_categories, dict):
+        categories_to_process = default_categories
+    else:
+        # Convert list to dict format for processing
+        categories_to_process = {}
+        for category in default_categories:
+            categories_to_process[category] = {
+                "keywords": ai_cat.categories.get(category, []),
+                "type": "expense"
+            }
+    
+    for category, category_data in categories_to_process.items():
+        keywords = category_data.get('keywords', [])
+        category_type = category_data.get('type', 'expense')
+        
+        with st.expander(f"📝 {category} ({category_type}) - Default"):
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                new_keywords = st.text_input(
+                    "Keywords (comma-separated)", 
+                    value=', '.join(keywords),
+                    key=f"edit_default_keywords_{category}"
+                )
+            
+            with col2:
+                new_type = st.selectbox(
+                    "Type", 
+                    ["income", "expense", "asset", "liability"],
+                    index=["income", "expense", "asset", "liability"].index(category_type),
+                    key=f"edit_default_type_{category}"
+                )
+            
+            if st.button("💾 Update Default", key=f"update_default_{category}"):
+                if new_keywords.strip():
+                    new_keywords_list = [kw.strip() for kw in new_keywords.split(',')]
+                    ai_cat.update_default_category(category, new_keywords_list, new_type)
+                    audit_log.log_category_creation(f"{category} (default updated)", new_keywords_list)
+                    st.success(f"Updated default category: {category}")
+                    st.rerun()
+                else:
+                    st.error("Keywords cannot be empty")
 
     # Custom categories
     st.write("**Custom Categories:**")
@@ -360,8 +458,6 @@ def render_category_management_view(ai_cat, audit_log, cat_mgr):
 
     if custom_categories:
         for category, category_data in custom_categories.items():
-            col1, col2, col3, col4 = st.columns([2, 2, 2, 1])
-
             # Handle both old and new format
             if isinstance(category_data, dict):
                 keywords = category_data.get('keywords', [])
@@ -370,18 +466,42 @@ def render_category_management_view(ai_cat, audit_log, cat_mgr):
                 keywords = category_data if isinstance(category_data, list) else []
                 category_type = 'expense'
 
-            with col1:
-                st.write(f"**{category}**")
-            with col2:
-                st.write(f"Type: {category_type}")
-            with col3:
-                st.write(f"Keywords: {', '.join(keywords)}")
-            with col4:
-                if st.button("Delete", key=f"del_{category}"):
-                    ai_cat.delete_custom_category(category)
-                    audit_log.log_category_deletion(category)
-                    st.success(f"Deleted category: {category}")
-                    st.rerun()
+            with st.expander(f"📝 {category} ({category_type})"):
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    new_keywords = st.text_input(
+                        "Keywords (comma-separated)", 
+                        value=', '.join(keywords),
+                        key=f"edit_keywords_{category}"
+                    )
+                
+                with col2:
+                    new_type = st.selectbox(
+                        "Type", 
+                        ["income", "expense", "asset", "liability"],
+                        index=["income", "expense", "asset", "liability"].index(category_type),
+                        key=f"edit_type_{category}"
+                    )
+                
+                col1, col2 = st.columns(2)
+                with col1:
+                    if st.button("💾 Update", key=f"update_{category}"):
+                        if new_keywords.strip():
+                            new_keywords_list = [kw.strip() for kw in new_keywords.split(',')]
+                            ai_cat.update_custom_category(category, new_keywords_list, new_type)
+                            audit_log.log_category_creation(f"{category} (updated)", new_keywords_list)
+                            st.success(f"Updated category: {category}")
+                            st.rerun()
+                        else:
+                            st.error("Keywords cannot be empty")
+                
+                with col2:
+                    if st.button("🗑️ Delete", key=f"del_{category}"):
+                        ai_cat.delete_custom_category(category)
+                        audit_log.log_category_deletion(category)
+                        st.success(f"Deleted category: {category}")
+                        st.rerun()
     else:
         st.info("No custom categories created yet.")
 
@@ -447,15 +567,6 @@ def render_settings_view(data_mgr, ai_cat, audit_log, rules_engine):
     """Render the settings view"""
     st.header("⚙️ Settings")
 
-    # Rules reapplication
-    if st.button("🔁 Reapply Custom Categorization Rules"):
-        if not st.session_state.transactions.empty:
-            updated_df = rules_engine.apply_rules_to_df(st.session_state.transactions)
-            st.session_state.transactions = updated_df
-            st.success("Rules reapplied to all transactions!")
-        else:
-            st.warning("No transactions available to update.")
-
     # Clear all data
     st.subheader("Reset Data")
     st.warning("⚠️ The following actions cannot be undone!")
@@ -503,7 +614,7 @@ def main():
 
     # Initialize components
     (pdf_proc, excel_proc, trans_parser, ai_cat, data_mgr, chart_gen, 
-     audit_log, rules_engine, cat_mgr) = init_components()
+     audit_log, rules_engine) = init_components()
 
     # App title and description
     st.title("🏦 Bank Statement Analyzer")
@@ -523,7 +634,7 @@ def main():
     elif selected_view == "Transaction Details":
         render_transaction_details_view(data_mgr, ai_cat, audit_log)
     elif selected_view == "Category Management":
-        render_category_management_view(ai_cat, audit_log, cat_mgr)
+        render_category_management_view(ai_cat, audit_log)
     elif selected_view == "Audit Trail":
         render_audit_trail_view(audit_log)
     elif selected_view == "Settings":
