@@ -505,6 +505,8 @@ def render_transaction_details_view(data_mgr, ai_cat, audit_log):
                     st.success(f"✅ Updated {changes_made} transactions to {bulk_category}")
                     st.session_state.selected_transactions = []  # Clear selection
                     st.rerun()
+                else:
+                    st.info("No changes were made.")
 
         with col2:
             if st.button("🤖 Analyze Selected with AI", key="bulk_ai_btn"):
@@ -513,31 +515,90 @@ def render_transaction_details_view(data_mgr, ai_cat, audit_log):
 
                 with st.spinner(f"Analyzing {len(selected_indices)} transactions..."):
                     progress_bar = st.progress(0)
+                    analysis_results = []
+
                     for i, idx in enumerate(selected_indices):
                         if idx < len(st.session_state.transactions):
                             row = st.session_state.transactions.loc[idx]
                             analysis = ai_cat.analyze_narration_with_ai(row['narration'])
 
-                            if analysis and analysis.get('confidence', 0) > 30:
-                                st.session_state.transactions.loc[idx, 'category'] = analysis.get('suggested_category', 'Others')
-                                st.session_state.transactions.loc[idx, 'ai_categorized'] = True
-                                st.session_state.transactions.loc[idx, 'similarity_score'] = analysis.get('confidence', 0)
-                                analyzed_count += 1
-                            else:
-                                st.session_state.transactions.loc[idx, 'category'] = 'Suspense'
-                                st.session_state.transactions.loc[idx, 'ai_categorized'] = True
-                                st.session_state.transactions.loc[idx, 'similarity_score'] = analysis.get('confidence', 0) if analysis else 0
+                            analysis_results.append({
+                                'idx': idx,
+                                'narration': row['narration'],
+                                'analysis': analysis
+                            })
 
                             progress_bar.progress((i + 1) / len(selected_indices))
 
-                if analyzed_count > 0:
-                    data_mgr.save_transactions(st.session_state.transactions)
-                    st.success(f"✅ Analyzed {analyzed_count} transactions successfully")
-                    st.session_state.selected_transactions = []  # Clear selection
-                    st.rerun()
+                    # Display analysis results
+                    if analysis_results:
+                        st.subheader("AI Analysis Results")
+                        for result in analysis_results:
+                            analysis = result['analysis']
+                            if analysis and analysis.get('confidence', 0) > 0:
+                                with st.expander(f"📝 {result['narration'][:50]}..."):
+                                    col1, col2, col3 = st.columns(3)
+                                    with col1:
+                                        st.write(f"**Purpose:** {analysis.get('purpose', 'N/A')}")
+                                    with col2:
+                                        st.write(f"**Suggested Category:** {analysis.get('suggested_category', 'Others')}")
+                                    with col3:
+                                        st.write(f"**Confidence:** {analysis.get('confidence', 0)}%")
+
+                                    st.write(f"**Reasoning:** {analysis.get('reasoning', 'N/A')}")
+
+                                    # Apply button for individual transaction
+                                    if st.button(f"Apply Suggestion", key=f"apply_{result['idx']}"):
+                                        st.session_state.transactions.loc[result['idx'], 'category'] = analysis.get('suggested_category', 'Others')
+                                        st.session_state.transactions.loc[result['idx'], 'ai_categorized'] = True
+                                        st.session_state.transactions.loc[result['idx'], 'similarity_score'] = analysis.get('confidence', 0)
+                                        data_mgr.save_transactions(st.session_state.transactions)
+                                        st.success(f"Applied suggestion for transaction")
+                                        analyzed_count += 1
+                                        st.rerun()
+                            else:
+                                st.warning(f"Could not analyze: {result['narration'][:50]}...")
+
+                        # Bulk apply all suggestions
+                        if st.button("Apply All AI Suggestions", key="bulk_apply_ai"):
+                            for result in analysis_results:
+                                analysis = result['analysis']
+                                if analysis and analysis.get('confidence', 0) > 30:
+                                    st.session_state.transactions.loc[result['idx'], 'category'] = analysis.get('suggested_category', 'Others')
+                                    st.session_state.transactions.loc[result['idx'], 'ai_categorized'] = True
+                                    st.session_state.transactions.loc[result['idx'], 'similarity_score'] = analysis.get('confidence', 0)
+                                    analyzed_count += 1
+
+                            if analyzed_count > 0:
+                                data_mgr.save_transactions(st.session_state.transactions)
+                                st.success(f"✅ Applied {analyzed_count} AI suggestions")
+                                st.session_state.selected_transactions = []  # Clear selection
+                                st.rerun()
+                    else:
+                        st.warning("No analysis results to display")
 
     # Transaction table display with selection
     st.subheader("📊 Transaction Table")
+    
+    # Add save button
+    col_save1, col_save2, col_save3 = st.columns([1, 2, 1])
+    with col_save2:
+        if st.button("💾 Save Changes", type="primary", use_container_width=True):
+            if 'transaction_updates' in st.session_state and st.session_state.transaction_updates:
+                # Apply all pending updates
+                for idx, updates in st.session_state.transaction_updates.items():
+                    for field, value in updates.items():
+                        st.session_state.transactions.loc[idx, field] = value
+                
+                # Save to file
+                data_mgr.save_transactions(st.session_state.transactions)
+                st.success(f"✅ Saved {len(st.session_state.transaction_updates)} transaction updates")
+                
+                # Clear pending updates
+                st.session_state.transaction_updates = {}
+                st.rerun()
+            else:
+                st.info("No pending changes to save")
 
     if not filtered_df.empty:
         # Prepare display dataframe
@@ -567,7 +628,11 @@ def render_transaction_details_view(data_mgr, ai_cat, audit_log):
         # Select columns for display
         display_columns = ['Select', 'Date', 'Short Narration', 'Amount (₹)', 'category', 'Type', 'AI Status']
 
-        # Create editable dataframe
+        # Initialize edited state in session state if not exists
+        if 'transaction_edits' not in st.session_state:
+            st.session_state.transaction_edits = {}
+
+        # Create editable dataframe without triggering automatic saves
         edited_df = st.data_editor(
             display_df[display_columns],
             column_config={
@@ -582,47 +647,67 @@ def render_transaction_details_view(data_mgr, ai_cat, audit_log):
             use_container_width=True,
             hide_index=True,
             key="transaction_table",
-            on_change=lambda: st.session_state.update({'selected_transactions': [i for i, selected in enumerate(edited_df['Select']) if selected]}) if 'edited_df' in locals() else None
+            disabled=False
         )
 
-        # Update selection state based on checkbox changes
+        # Update selection state based on checkbox changes (without triggering rerun)
         if edited_df is not None:
             new_selection = [i for i, selected in enumerate(edited_df['Select']) if selected]
-            if new_selection != st.session_state.selected_transactions:
-                st.session_state.selected_transactions = new_selection
+            # Store selection changes
+            st.session_state.selected_transactions = new_selection
+            
+            # Store edits temporarily without applying them
+            st.session_state.transaction_edits = edited_df.to_dict('records')
 
-        # Apply category and type changes made in the table
-        if st.button("💾 Apply Table Changes", key="apply_changes_btn"):
-            changes_made = 0
-            for i, (edited_row, original_idx) in enumerate(zip(edited_df.itertuples(), filtered_df.index)):
-                original_category = filtered_df.loc[original_idx, 'category']
-                original_type = filtered_df.loc[original_idx, 'Type'] if 'Type' in filtered_df.columns else None
+        # Save button for applying all changes
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            if st.button("💾 Save All Changes", key="save_changes_btn", type="primary"):
+                changes_made = 0
+                if 'transaction_edits' in st.session_state and st.session_state.transaction_edits:
+                    for i, edited_row_dict in enumerate(st.session_state.transaction_edits):
+                        if i < len(filtered_df):
+                            original_idx = filtered_df.index[i]
+                            original_category = filtered_df.loc[original_idx, 'category']
+                            original_type = 'Income' if filtered_df.loc[original_idx, 'amount'] > 0 else 'Expense'
 
-                # Update category if changed
-                if edited_row.category != original_category:
-                    st.session_state.transactions.loc[original_idx, 'category'] = edited_row.category
-                    audit_log.log_categorization_change(
-                        str(filtered_df.loc[original_idx, 'narration']), 
-                        original_category, 
-                        edited_row.category
-                    )
-                    changes_made += 1
+                            # Update category if changed
+                            if edited_row_dict['category'] != original_category:
+                                st.session_state.transactions.loc[original_idx, 'category'] = edited_row_dict['category']
+                                audit_log.log_categorization_change(
+                                    str(filtered_df.loc[original_idx, 'narration']), 
+                                    original_category, 
+                                    edited_row_dict['category']
+                                )
+                                changes_made += 1
 
-                # Update type if changed
-                if hasattr(edited_row, 'Type') and edited_row.Type != original_type:
-                    # Update transaction type based on selection
-                    if edited_row.Type == 'Income' and st.session_state.transactions.loc[original_idx, 'amount'] < 0:
-                        st.session_state.transactions.loc[original_idx, 'amount'] = abs(st.session_state.transactions.loc[original_idx, 'amount'])
-                    elif edited_row.Type == 'Expense' and st.session_state.transactions.loc[original_idx, 'amount'] > 0:
-                        st.session_state.transactions.loc[original_idx, 'amount'] = -abs(st.session_state.transactions.loc[original_idx, 'amount'])
-                    changes_made += 1
+                            # Update type if changed
+                            if edited_row_dict['Type'] != original_type:
+                                # Update transaction type based on selection
+                                if edited_row_dict['Type'] == 'Income' and st.session_state.transactions.loc[original_idx, 'amount'] < 0:
+                                    st.session_state.transactions.loc[original_idx, 'amount'] = abs(st.session_state.transactions.loc[original_idx, 'amount'])
+                                elif edited_row_dict['Type'] == 'Expense' and st.session_state.transactions.loc[original_idx, 'amount'] > 0:
+                                    st.session_state.transactions.loc[original_idx, 'amount'] = -abs(st.session_state.transactions.loc[original_idx, 'amount'])
+                                changes_made += 1
 
-            if changes_made > 0:
-                data_mgr.save_transactions(st.session_state.transactions)
-                st.success(f"✅ Applied {changes_made} changes!")
+                    if changes_made > 0:
+                        data_mgr.save_transactions(st.session_state.transactions)
+                        st.success(f"✅ Saved {changes_made} changes!")
+                        # Clear the edits after saving
+                        st.session_state.transaction_edits = {}
+                        st.rerun()
+                    else:
+                        st.info("No changes detected to save.")
+                else:
+                    st.info("No changes to save.")
+
+        with col2:
+            if st.button("🔄 Reset Edits", key="reset_edits_btn"):
+                st.session_state.transaction_edits = {}
+                st.session_state.selected_transactions = []
+                st.success("Edits reset!")
                 st.rerun()
-            else:
-                st.info("No changes detected in the table.")
     else:
         st.info("No transactions match the current filters.")
 
@@ -696,8 +781,7 @@ def render_category_management_view(ai_cat, audit_log):
             }
 
     for category, category_data in categories_to_process.items():
-        ```python
-keywords = category_data.get('keywords', [])
+        keywords = category_data.get('keywords', [])
         category_type = category_data.get('type', 'expense')
 
         with st.expander(f"📝 {category} ({category_type}) - Default"):

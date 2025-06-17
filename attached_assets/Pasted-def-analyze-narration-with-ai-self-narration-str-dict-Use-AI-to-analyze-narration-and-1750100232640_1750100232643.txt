@@ -1,0 +1,55 @@
+def analyze_narration_with_ai(self, narration: str) -> dict:
+    """Use AI to analyze narration and suggest category with reasoning"""
+    if not openai.api_key:
+        return {
+            "purpose": "AI analysis not available - API key not configured",
+            "suggested_category": "Others",
+            "reasoning": "AI analysis not available - API key not configured",
+            "confidence": 0
+        }
+    # Log the narration being analyzed
+    print(f"Analyzing narration: '{narration}'")
+    # Get all available categories
+    all_categories = list(self.get_all_categories())
+    # Prepare the prompt
+    categories_info = "".join(
+        [f"\n- {cat} ({self.get_category_type(cat)})" for cat in all_categories]
+    )
+    prompt = f"""
+    Analyze this bank transaction narration and categorize it.
+    Available categories with types:{categories_info}
+    Narration: "{narration}"
+    """
+    try:
+        from openai import OpenAI
+        client = OpenAI(api_key=openai.api_key, base_url=openai.api_base)
+        response = client.chat.completions.create(
+            model="deepseek/deepseek-r1-0528:free",
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.2,
+            max_tokens=150
+        )
+        result_text = response.choices[0].message.content.strip()
+        # Try to parse JSON response
+        try:
+            result = json.loads(result_text)
+            # Validate suggested category is in our list
+            if result.get('suggested_category') not in all_categories:
+                result['suggested_category'] = 'Others'
+            return result
+        except json.JSONDecodeError:
+            print(f"Error parsing AI response: {result_text}")  # Debug log
+            return {
+                "purpose": "Could not analyze",
+                "suggested_category": "Others",
+                "reasoning": "AI response parsing failed",
+                "confidence": 0
+            }
+    except Exception as e:
+        print(f"AI Analysis Error: {e}")  # Print detailed error
+        return {
+            "purpose": "Analysis failed",
+            "suggested_category": "Others",
+            "reasoning": f"AI error: {str(e)}",
+            "confidence": 0
+        }

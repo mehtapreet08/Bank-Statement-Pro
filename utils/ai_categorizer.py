@@ -7,13 +7,14 @@ import pandas as pd
 from fuzzywuzzy import fuzz
 from datetime import datetime
 import numpy as np
-import openai
+from together import Together
 
-# Configure OpenRouter
-openai.api_key = "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"
-openai.api_base = "https://openrouter.ai/api/v1"
+# Configure Together AI
+TOGETHER_API_KEY = "d506e2a8ffe9aff1839a2587587a6c2b78c8852867bfbcb4daa3dbc8676e4650"
+
 
 class AICategorizer:
+
     def __init__(self, user_data_dir=None):
         # Use user-specific data directory or default to 'data'
         self.data_dir = user_data_dir if user_data_dir else 'data'
@@ -23,10 +24,14 @@ class AICategorizer:
 
         # File paths
         self.categories_file = os.path.join(self.data_dir, 'categories.json')
-        self.custom_categories_file = os.path.join(self.data_dir, 'custom_categories.json')
-        self.cache_file = os.path.join(self.data_dir, 'categorization_cache.json')
-        self.category_types_file = os.path.join(self.data_dir, 'category_types.json')
-        self.default_categories_file = os.path.join(self.data_dir, 'default_categories.json')
+        self.custom_categories_file = os.path.join(self.data_dir,
+                                                   'custom_categories.json')
+        self.cache_file = os.path.join(self.data_dir,
+                                       'categorization_cache.json')
+        self.category_types_file = os.path.join(self.data_dir,
+                                                'category_types.json')
+        self.default_categories_file = os.path.join(self.data_dir,
+                                                    'default_categories.json')
 
         # Initialize files if they don't exist
         self._initialize_data_files()
@@ -53,15 +58,19 @@ class AICategorizer:
                 loaded_custom = json.load(f)
                 # Keep the loaded format (could be list or dict)
                 self.custom_categories = loaded_custom
-                print(f"Debug: Loaded custom categories: {self.custom_categories}")
+                print(
+                    f"Debug: Loaded custom categories: {self.custom_categories}"
+                )
         except Exception as e:
             print(f"Debug: Error loading custom categories: {e}")
             self.custom_categories = {}
 
         self.category_patterns = self._initialize_category_patterns()
 
-        if not openai.api_key:
-            print("⚠️ OpenAI API key not set. Falling back to rule-based categorization.")
+        if not TOGETHER_API_KEY:
+            print(
+                "⚠️ Together AI API key not set. Falling back to rule-based categorization."
+            )
 
     def _initialize_data_files(self):
         """Initialize all required JSON data files with default content"""
@@ -70,13 +79,34 @@ class AICategorizer:
         if not os.path.exists(self.categories_file):
             default_categories = {
                 "Salary": ["salary", "wage", "payroll", "income", "pay"],
-                "Food": ["restaurant", "food", "dining", "cafe", "kitchen", "meal", "swiggy", "zomato", "uber eats"],
-                "Transportation": ["uber", "ola", "taxi", "bus", "metro", "fuel", "petrol", "diesel", "parking"],
-                "Shopping": ["amazon", "flipkart", "myntra", "shopping", "purchase", "buy"],
-                "Utilities": ["electricity", "water", "gas", "internet", "mobile", "phone", "broadband"],
-                "Healthcare": ["hospital", "doctor", "medical", "pharmacy", "medicine", "health"],
-                "Entertainment": ["movie", "netflix", "spotify", "game", "entertainment", "cinema"],
-                "Investment": ["mutual fund", "sip", "stock", "investment", "dividend", "equity"],
+                "Food": [
+                    "restaurant", "food", "dining", "cafe", "kitchen", "meal",
+                    "swiggy", "zomato", "uber eats"
+                ],
+                "Transportation": [
+                    "uber", "ola", "taxi", "bus", "metro", "fuel", "petrol",
+                    "diesel", "parking"
+                ],
+                "Shopping": [
+                    "amazon", "flipkart", "myntra", "shopping", "purchase",
+                    "buy"
+                ],
+                "Utilities": [
+                    "electricity", "water", "gas", "internet", "mobile",
+                    "phone", "broadband"
+                ],
+                "Healthcare": [
+                    "hospital", "doctor", "medical", "pharmacy", "medicine",
+                    "health"
+                ],
+                "Entertainment": [
+                    "movie", "netflix", "spotify", "game", "entertainment",
+                    "cinema"
+                ],
+                "Investment": [
+                    "mutual fund", "sip", "stock", "investment", "dividend",
+                    "equity"
+                ],
                 "EMI": ["emi", "loan", "mortgage", "credit", "installment"],
                 "Suspense": ["suspense", "uncertain", "low confidence"],
                 "Others": ["misc", "other", "unknown"]
@@ -86,12 +116,19 @@ class AICategorizer:
 
         # Custom categories file
         if not os.path.exists(self.custom_categories_file):
-            default_custom_rules = [
-                {"pattern": "SALARY|WAGE|PAY.*ROLL", "category": "Salary"},
-                {"pattern": "UPI.*SWIGGY|ZOMATO|UBER.*EATS", "category": "Food"},
-                {"pattern": "DIVIDEND|DIV.*INCOME", "category": "Investment"},
-                {"pattern": "EMI|LOAN.*EMI|HDFC.*LOAN", "category": "EMI"}
-            ]
+            default_custom_rules = [{
+                "pattern": "SALARY|WAGE|PAY.*ROLL",
+                "category": "Salary"
+            }, {
+                "pattern": "UPI.*SWIGGY|ZOMATO|UBER.*EATS",
+                "category": "Food"
+            }, {
+                "pattern": "DIVIDEND|DIV.*INCOME",
+                "category": "Investment"
+            }, {
+                "pattern": "EMI|LOAN.*EMI|HDFC.*LOAN",
+                "category": "EMI"
+            }]
             with open(self.custom_categories_file, 'w') as f:
                 json.dump(default_custom_rules, f, indent=2)
 
@@ -99,7 +136,7 @@ class AICategorizer:
         if not os.path.exists(self.category_types_file):
             category_types = {
                 "Salary": "income",
-                "Dividend": "income", 
+                "Dividend": "income",
                 "Food": "expense",
                 "Transportation": "expense",
                 "Shopping": "expense",
@@ -117,17 +154,80 @@ class AICategorizer:
         # Default categories file
         if not os.path.exists(self.default_categories_file):
             default_categories_detailed = {
-                "Salary": {"keywords": ["salary", "wage", "payroll", "income", "pay"], "type": "income"},
-                "Food": {"keywords": ["restaurant", "food", "dining", "cafe", "kitchen", "meal", "swiggy", "zomato", "uber eats"], "type": "expense"},
-                "Transportation": {"keywords": ["uber", "ola", "taxi", "bus", "metro", "fuel", "petrol", "diesel", "parking"], "type": "expense"},
-                "Shopping": {"keywords": ["amazon", "flipkart", "myntra", "shopping", "purchase", "buy"], "type": "expense"},
-                "Utilities": {"keywords": ["electricity", "water", "gas", "internet", "mobile", "phone", "broadband"], "type": "expense"},
-                "Healthcare": {"keywords": ["hospital", "doctor", "medical", "pharmacy", "medicine", "health"], "type": "expense"},
-                "Entertainment": {"keywords": ["movie", "netflix", "spotify", "game", "entertainment", "cinema"], "type": "expense"},
-                "Investment": {"keywords": ["mutual fund", "sip", "stock", "investment", "dividend", "equity"], "type": "asset"},
-                "EMI": {"keywords": ["emi", "loan", "mortgage", "credit", "installment"], "type": "liability"},
-                "Suspense": {"keywords": ["suspense", "uncertain", "low confidence"], "type": "expense"},
-                "Others": {"keywords": ["misc", "other", "unknown"], "type": "expense"}
+                "Salary": {
+                    "keywords": ["salary", "wage", "payroll", "income", "pay"],
+                    "type": "income"
+                },
+                "Food": {
+                    "keywords": [
+                        "restaurant", "food", "dining", "cafe", "kitchen",
+                        "meal", "swiggy", "zomato", "uber eats"
+                    ],
+                    "type":
+                    "expense"
+                },
+                "Transportation": {
+                    "keywords": [
+                        "uber", "ola", "taxi", "bus", "metro", "fuel",
+                        "petrol", "diesel", "parking"
+                    ],
+                    "type":
+                    "expense"
+                },
+                "Shopping": {
+                    "keywords": [
+                        "amazon", "flipkart", "myntra", "shopping", "purchase",
+                        "buy"
+                    ],
+                    "type":
+                    "expense"
+                },
+                "Utilities": {
+                    "keywords": [
+                        "electricity", "water", "gas", "internet", "mobile",
+                        "phone", "broadband"
+                    ],
+                    "type":
+                    "expense"
+                },
+                "Healthcare": {
+                    "keywords": [
+                        "hospital", "doctor", "medical", "pharmacy",
+                        "medicine", "health"
+                    ],
+                    "type":
+                    "expense"
+                },
+                "Entertainment": {
+                    "keywords": [
+                        "movie", "netflix", "spotify", "game", "entertainment",
+                        "cinema"
+                    ],
+                    "type":
+                    "expense"
+                },
+                "Investment": {
+                    "keywords": [
+                        "mutual fund", "sip", "stock", "investment",
+                        "dividend", "equity"
+                    ],
+                    "type":
+                    "asset"
+                },
+                "EMI": {
+                    "keywords":
+                    ["emi", "loan", "mortgage", "credit", "installment"],
+                    "type":
+                    "liability"
+                },
+                "Suspense": {
+                    "keywords": ["suspense", "uncertain", "low confidence"],
+                    "type": "expense"
+                },
+                "Others": {
+                    "keywords": ["misc", "other", "unknown"],
+                    "type": "expense"
+                }
             }
             with open(self.default_categories_file, 'w') as f:
                 json.dump(default_categories_detailed, f, indent=2)
@@ -151,18 +251,17 @@ class AICategorizer:
         """
 
         try:
-            from openai import OpenAI
-            client = OpenAI(
-                api_key=openai.api_key,
-                base_url=openai.api_base
-            )
+            client = Together(api_key=TOGETHER_API_KEY)
 
             response = client.chat.completions.create(
-                model="deepseek/deepseek-r1-0528:free",
-                messages=[{"role": "user", "content": prompt}],
+                model="meta-llama/Llama-3.3-70B-Instruct-Turbo-Free",
+                messages=[{
+                    "role": "user",
+                    "content": prompt
+                }],
                 temperature=0.2,
-                max_tokens=10
-            )
+                max_tokens=10)
+
             result = response.choices[0].message.content.strip()
             return result if result in self.categories else 'Others'
         except Exception as e:
@@ -178,7 +277,8 @@ class AICategorizer:
                 with open(default_path, "r") as f:
                     return json.load(f)
             except Exception as e:
-                raise Exception(f"❌ Failed to read default categories: {str(e)}")
+                raise Exception(
+                    f"❌ Failed to read default categories: {str(e)}")
 
         # Fallback: return minimal category if file is missing or corrupted
         return {
@@ -247,7 +347,8 @@ class AICategorizer:
                     pattern_strings.append(f"{escaped_keyword}")
 
             if pattern_strings:
-                patterns[category] = re.compile('|'.join(pattern_strings), re.IGNORECASE)
+                patterns[category] = re.compile('|'.join(pattern_strings),
+                                                re.IGNORECASE)
 
         # Process custom categories (if they exist and are in dict format)
         if isinstance(self.custom_categories, dict):
@@ -259,7 +360,8 @@ class AICategorizer:
                         keywords = [keywords] if keywords else []
                 else:
                     # Handle old format
-                    keywords = category_data if isinstance(category_data, list) else [category_data]
+                    keywords = category_data if isinstance(
+                        category_data, list) else [category_data]
 
                 pattern_strings = []
                 for keyword in keywords:
@@ -270,11 +372,13 @@ class AICategorizer:
                         pattern_strings.append(f"{escaped_keyword}")
 
                 if pattern_strings:
-                    patterns[category] = re.compile('|'.join(pattern_strings), re.IGNORECASE)
+                    patterns[category] = re.compile('|'.join(pattern_strings),
+                                                    re.IGNORECASE)
 
         return patterns
 
-    def categorize_transactions(self, transactions_df: pd.DataFrame) -> pd.DataFrame:
+    def categorize_transactions(self,
+                                transactions_df: pd.DataFrame) -> pd.DataFrame:
         """
         Categorize transactions using AI with permanent learning
 
@@ -287,31 +391,38 @@ class AICategorizer:
         df = transactions_df.copy()
 
         # Add columns for category, AI flag, and similarity score
-        categorization_results = df['narration'].apply(self._categorize_single_transaction_with_similarity)
+        categorization_results = df['narration'].apply(
+            self._categorize_single_transaction_with_similarity)
         df['category'] = [result[0] for result in categorization_results]
         df['ai_categorized'] = [result[1] for result in categorization_results]
-        df['similarity_score'] = [result[2] for result in categorization_results]
+        df['similarity_score'] = [
+            result[2] for result in categorization_results
+        ]
 
         # Save any new patterns learned during categorization
         self._save_categorization_cache()
 
         return df
 
-    def _categorize_single_transaction_with_similarity(self, narration: str) -> tuple:
+    def _categorize_single_transaction_with_similarity(
+            self, narration: str) -> tuple:
         """Categorize a single transaction and return category, AI flag, and similarity score"""
         narration_lower = narration.lower().strip()
         similarity_score = 0
 
         # 1. Check exact cache matches first (highest priority) - not AI
         if narration_lower in self.categorization_cache["patterns"]:
-            return self.categorization_cache["patterns"][narration_lower], False, 100
+            return self.categorization_cache["patterns"][
+                narration_lower], False, 100
 
         # 2. Check user corrections cache - not AI
         if narration_lower in self.categorization_cache["corrections"]:
-            return self.categorization_cache["corrections"][narration_lower], False, 100
+            return self.categorization_cache["corrections"][
+                narration_lower], False, 100
 
         # 3. Apply similarity-based categorization first
-        category, similarity_score = self._apply_similarity_based_categorization(narration_lower)
+        category, similarity_score = self._apply_similarity_based_categorization(
+            narration_lower)
 
         # 4. If no similarity match, apply rule-based categorization
         if category == "Others":
@@ -335,20 +446,24 @@ class AICategorizer:
         # Return category, AI flag, and similarity score
         return category, True, similarity_score
 
-    def _categorize_single_transaction_with_flag(self, narration: str) -> tuple:
+    def _categorize_single_transaction_with_flag(self,
+                                                 narration: str) -> tuple:
         """Categorize a single transaction and return if it was AI categorized"""
         narration_lower = narration.lower().strip()
 
         # 1. Check exact cache matches first (highest priority) - not AI
         if narration_lower in self.categorization_cache["patterns"]:
-            return self.categorization_cache["patterns"][narration_lower], False
+            return self.categorization_cache["patterns"][
+                narration_lower], False
 
         # 2. Check user corrections cache - not AI
         if narration_lower in self.categorization_cache["corrections"]:
-            return self.categorization_cache["corrections"][narration_lower], False
+            return self.categorization_cache["corrections"][
+                narration_lower], False
 
         # 3. Apply similarity-based categorization first
-        category, similarity_score = self._apply_similarity_based_categorization(narration_lower)
+        category, similarity_score = self._apply_similarity_based_categorization(
+            narration_lower)
 
         # 4. If no similarity match, apply rule-based categorization
         if category == "Others":
@@ -428,7 +543,8 @@ class AICategorizer:
                         keywords = [keywords] if keywords else []
                 else:
                     # Handle old format
-                    keywords = category_data if isinstance(category_data, list) else [category_data]
+                    keywords = category_data if isinstance(
+                        category_data, list) else [category_data]
 
                 # Only add if we have valid keywords
                 if keywords and any(kw for kw in keywords if kw):
@@ -454,10 +570,14 @@ class AICategorizer:
                 if not keyword:  # Skip empty keywords
                     continue
 
-                similarity = self._calculate_similarity(narration, str(keyword).lower())
+                similarity = self._calculate_similarity(
+                    narration,
+                    str(keyword).lower())
                 # Debug: Print matching details for troubleshooting
                 if similarity > 0:
-                    print(f"Debug: '{narration}' vs '{keyword}' in category '{category}' = {similarity}%")
+                    print(
+                        f"Debug: '{narration}' vs '{keyword}' in category '{category}' = {similarity}%"
+                    )
 
                 if similarity > best_similarity and similarity >= 20:  # Minimum 20% similarity
                     best_similarity = similarity
@@ -512,7 +632,8 @@ class AICategorizer:
         # Check for substring matches in either direction
         for keyword_word in keyword_words:
             if len(keyword_word) >= 3:
-                if keyword_word in narration_clean or any(keyword_word in word for word in narration_words):
+                if keyword_word in narration_clean or any(
+                        keyword_word in word for word in narration_words):
                     return 75
 
         return 0
@@ -520,35 +641,44 @@ class AICategorizer:
     def _apply_special_rules(self, narration: str) -> str:
         """Apply special categorization rules"""
         # ATM withdrawals
-        if any(term in narration for term in ["atm", "cash withdrawal", "pos"]):
+        if any(term in narration
+               for term in ["atm", "cash withdrawal", "pos"]):
             return "Cash Withdrawal"
 
         # Bank transfers
-        if any(term in narration for term in ["neft", "rtgs", "imps", "upi", "transfer"]):
+        if any(term in narration
+               for term in ["neft", "rtgs", "imps", "upi", "transfer"]):
             return "Transfer"
 
         # Interest and charges
-        if any(term in narration for term in ["interest", "charge", "fee", "penalty"]):
+        if any(term in narration
+               for term in ["interest", "charge", "fee", "penalty"]):
             return "Bank Charges"
 
         return "Others"
 
-    def _apply_fuzzy_matching(self, narration: str, threshold: int = 80) -> Optional[str]:
+    def _apply_fuzzy_matching(self,
+                              narration: str,
+                              threshold: int = 80) -> Optional[str]:
         """Apply fuzzy matching against cached patterns"""
         best_match_score = 0
         best_match_category = None
 
         # Check against all cached patterns
-        for cached_narration, category in self.categorization_cache["patterns"].items():
+        for cached_narration, category in self.categorization_cache[
+                "patterns"].items():
             score = fuzz.ratio(narration, cached_narration)
             if score > threshold and score > best_match_score:
                 best_match_score = score
                 best_match_category = category
 
         # Check against user corrections with higher weight
-        for cached_narration, category in self.categorization_cache["corrections"].items():
+        for cached_narration, category in self.categorization_cache[
+                "corrections"].items():
             score = fuzz.ratio(narration, cached_narration)
-            if score > (threshold - 10) and score > best_match_score:  # Lower threshold for corrections
+            if score > (
+                    threshold - 10
+            ) and score > best_match_score:  # Lower threshold for corrections
                 best_match_score = score
                 best_match_category = category
 
@@ -573,10 +703,12 @@ class AICategorizer:
         narration_lower = narration.lower().strip()
 
         # Store the correction in the learning cache
-        self.categorization_cache["corrections"][narration_lower] = correct_category
+        self.categorization_cache["corrections"][
+            narration_lower] = correct_category
 
         # Also update the main patterns cache
-        self.categorization_cache["patterns"][narration_lower] = correct_category
+        self.categorization_cache["patterns"][
+            narration_lower] = correct_category
 
         # Extract keywords from the narration for pattern enhancement
         self._enhance_category_patterns(narration_lower, correct_category)
@@ -590,13 +722,23 @@ class AICategorizer:
         words = re.findall(r'\b\w+\b', narration.lower())
 
         # Filter out common words and numbers
-        stop_words = {'and', 'or', 'the', 'a', 'an', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by'}
-        keywords = [word for word in words if len(word) > 2 and word not in stop_words and not word.isdigit()]
+        stop_words = {
+            'and', 'or', 'the', 'a', 'an', 'in', 'on', 'at', 'to', 'for', 'of',
+            'with', 'by'
+        }
+        keywords = [
+            word for word in words
+            if len(word) > 2 and word not in stop_words and not word.isdigit()
+        ]
 
         # Add significant keywords to the category if not already present
         if category in self.default_categories:
-            existing_keywords = [kw.lower() for kw in self.default_categories[category]]
-            new_keywords = [kw for kw in keywords if kw not in existing_keywords]
+            existing_keywords = [
+                kw.lower() for kw in self.default_categories[category]
+            ]
+            new_keywords = [
+                kw for kw in keywords if kw not in existing_keywords
+            ]
 
             if new_keywords:
                 # Don't automatically add to default categories, but store in cache
@@ -605,7 +747,10 @@ class AICategorizer:
                     self.categorization_cache[cache_key] = []
                 self.categorization_cache[cache_key].extend(new_keywords)
 
-    def add_custom_category(self, category_name: str, keywords: List[str], category_type: str = "expense"):
+    def add_custom_category(self,
+                            category_name: str,
+                            keywords: List[str],
+                            category_type: str = "expense"):
         """Add a new custom category with keywords and type"""
         # Convert to dict format if currently list format
         if not isinstance(self.custom_categories, dict):
@@ -637,7 +782,10 @@ class AICategorizer:
         except Exception as e:
             print(f"Error re-categorizing existing transactions: {str(e)}")
 
-    def update_custom_category(self, category_name: str, keywords: List[str], category_type: str = "expense"):
+    def update_custom_category(self,
+                               category_name: str,
+                               keywords: List[str],
+                               category_type: str = "expense"):
         """Update an existing custom category"""
         # Convert to dict format if currently list format
         if not isinstance(self.custom_categories, dict):
@@ -652,7 +800,10 @@ class AICategorizer:
         # Update category patterns
         self.category_patterns = self._initialize_category_patterns()
 
-    def update_default_category(self, category_name: str, keywords: List[str], category_type: str = "expense"):
+    def update_default_category(self,
+                                category_name: str,
+                                keywords: List[str],
+                                category_type: str = "expense"):
         """Update an existing default category"""
         if category_name in self.default_categories:
             self.default_categories[category_name] = {
@@ -674,7 +825,8 @@ class AICategorizer:
 
     def delete_custom_category(self, category_name: str):
         """Delete a custom category"""
-        if isinstance(self.custom_categories, dict) and category_name in self.custom_categories:
+        if isinstance(self.custom_categories,
+                      dict) and category_name in self.custom_categories:
             del self.custom_categories[category_name]
             self._save_custom_categories()
 
@@ -682,8 +834,10 @@ class AICategorizer:
             self.category_patterns = self._initialize_category_patterns()
         elif isinstance(self.custom_categories, list):
             # Remove all rules for this category
-            self.custom_categories = [rule for rule in self.custom_categories 
-                                    if rule.get('category') != category_name]
+            self.custom_categories = [
+                rule for rule in self.custom_categories
+                if rule.get('category') != category_name
+            ]
             self._save_custom_categories()
 
             # Update category patterns
@@ -698,7 +852,12 @@ class AICategorizer:
             custom_cats = list(self.custom_categories.keys())
         elif isinstance(self.custom_categories, list):
             # If it's a list of rules, extract unique categories
-            custom_cats = list(set([rule.get('category', 'Others') for rule in self.custom_categories if isinstance(rule, dict)]))
+            custom_cats = list(
+                set([
+                    rule.get('category', 'Others')
+                    for rule in self.custom_categories
+                    if isinstance(rule, dict)
+                ]))
         else:
             custom_cats = []
 
@@ -735,34 +894,44 @@ class AICategorizer:
                             'type': 'expense'
                         }
                     else:
-                        result[category]['keywords'].append(rule.get('pattern', ''))
+                        result[category]['keywords'].append(
+                            rule.get('pattern', ''))
             return result
 
     def get_category_type(self, category_name: str) -> str:
         """Get the type of a specific category"""
         if category_name in self.default_categories:
-            return self.default_categories[category_name].get('type', 'expense')
-        elif isinstance(self.custom_categories, dict) and category_name in self.custom_categories:
+            return self.default_categories[category_name].get(
+                'type', 'expense')
+        elif isinstance(self.custom_categories,
+                        dict) and category_name in self.custom_categories:
             return self.custom_categories[category_name].get('type', 'expense')
         elif isinstance(self.custom_categories, list):
             # Find first rule with this category
             for rule in self.custom_categories:
-                if isinstance(rule, dict) and rule.get('category') == category_name:
+                if isinstance(rule,
+                              dict) and rule.get('category') == category_name:
                     return rule.get('type', 'expense')
         return 'expense'
 
     def get_cache_statistics(self) -> Dict:
         """Get statistics about the categorization cache"""
         try:
-            cache_size = os.path.getsize(self.cache_file) if os.path.exists(self.cache_file) else 0
+            cache_size = os.path.getsize(self.cache_file) if os.path.exists(
+                self.cache_file) else 0
             cache_size_kb = round(cache_size / 1024, 2)
 
             return {
-                "pattern_count": len(self.categorization_cache.get("patterns", {})),
-                "correction_count": len(self.categorization_cache.get("corrections", {})),
-                "fuzzy_match_count": len(self.categorization_cache.get("fuzzy_matches", {})),
-                "cache_size_kb": cache_size_kb,
-                "last_updated": self.categorization_cache.get("last_updated", "Never")
+                "pattern_count":
+                len(self.categorization_cache.get("patterns", {})),
+                "correction_count":
+                len(self.categorization_cache.get("corrections", {})),
+                "fuzzy_match_count":
+                len(self.categorization_cache.get("fuzzy_matches", {})),
+                "cache_size_kb":
+                cache_size_kb,
+                "last_updated":
+                self.categorization_cache.get("last_updated", "Never")
             }
         except Exception:
             return {
@@ -802,74 +971,118 @@ class AICategorizer:
         except Exception:
             return False
 
-
-
     def analyze_narration_with_ai(self, narration: str) -> dict:
         """Use AI to analyze narration and suggest category with reasoning"""
-        if not openai.api_key:
+        if not TOGETHER_API_KEY:
             return {
-                "purpose": "AI analysis not available - API key not configured",
+                "purpose":
+                "AI analysis not available - API key not configured",
                 "suggested_category": "Others",
-                "reasoning": "AI analysis not available - API key not configured",
+                "reasoning":
+                "AI analysis not available - API key not configured",
                 "confidence": 0
             }
+
+        # Log the narration being analyzed
+        print(f"Analyzing narration: '{narration}'")
 
         # Get all available categories
         all_categories = list(self.get_all_categories())
 
-        # Get categories with their types for context
-        categories_info = ""
-        for cat in all_categories:
-            cat_type = self.get_category_type(cat)
-            categories_info += f"\n- {cat} ({cat_type})"
+        # Prepare the prompt with structured response format
+        categories_info = "".join([
+            f"\n- {cat} ({self.get_category_type(cat)})"
+            for cat in all_categories
+        ])
 
-        prompt = f"""
-        Analyze this bank transaction narration and categorize it.
-        
-        Available categories with types:{categories_info}
+        prompt = f"""Analyze this bank transaction and categorize it.
 
-        Narration: "{narration}"
+Available categories:{categories_info}
 
-        Respond in JSON format:
-        {{
-            "purpose": "brief description in 2-4 words",
-            "suggested_category": "exact category name from the list",
-            "transaction_type": "income/expense/asset/liability", 
-            "reasoning": "why this category fits",
-            "confidence": 85
-        }}
-        """
+Transaction: "{narration}"
+
+Respond with JSON:
+{{
+    "purpose": "brief description",
+    "suggested_category": "exact category name",
+    "reasoning": "why this category",
+    "confidence": 85
+}}"""
 
         try:
-            from openai import OpenAI
-            client = OpenAI(
-                api_key=openai.api_key,
-                base_url=openai.api_base
-            )
+            client = Together(api_key=TOGETHER_API_KEY)
 
             response = client.chat.completions.create(
-                model="deepseek/deepseek-r1-0528:free",
-                messages=[{"role": "user", "content": prompt}],
-                temperature=0.2,
-                max_tokens=150
-            )
+                model="meta-llama/Llama-3.3-70B-Instruct-Turbo-Free",
+                messages=[{
+                    "role": "user",
+                    "content": prompt
+                }],
+                temperature=0.1,
+                max_tokens=150)
 
-            result_text = response.choices[0].message.content.strip()
+            result_text = response.choices[0].message.content.strip(
+            ) if response.choices and response.choices[0].message else ""
+
+            print(f"AI Response: {result_text}")  # Debug log
+
+            if not result_text:
+                print("Empty AI response received")
+                return {
+                    "purpose": "Empty Response",
+                    "suggested_category": "Others",
+                    "reasoning": "AI returned empty response",
+                    "confidence": 0
+                }
 
             # Try to parse JSON response
             try:
+                # Clean the response to extract JSON if wrapped in markdown
+                if "```json" in result_text:
+                    result_text = result_text.split("```json")[1].split(
+                        "```")[0].strip()
+                elif "```" in result_text:
+                    result_text = result_text.split("```")[1].strip()
+
                 result = json.loads(result_text)
+
+                # Validate and sanitize the response
+                if not isinstance(result, dict):
+                    raise ValueError("Response is not a JSON object")
+
+                # Ensure required fields exist
+                result['purpose'] = result.get('purpose', 'Transaction')
+                result['suggested_category'] = result.get(
+                    'suggested_category', 'Others')
+                result['reasoning'] = result.get('reasoning',
+                                                 'AI analysis completed')
+                result['confidence'] = max(
+                    0, min(100, result.get('confidence', 50)))
+
                 # Validate suggested category is in our list
-                if result.get('suggested_category') not in all_categories:
+                if result['suggested_category'] not in all_categories:
                     result['suggested_category'] = 'Others'
+                    result[
+                        'reasoning'] = f"Original suggestion not in available categories. {result['reasoning']}"
+
                 return result
-            except json.JSONDecodeError:
-                # Fallback if JSON parsing fails
+
+            except (json.JSONDecodeError, ValueError) as e:
+                print(f"Error parsing AI response: {result_text}, Error: {e}")
+
+                # Fallback: try to extract category from text response
+                suggested_category = 'Others'
+                for category in all_categories:
+                    if category.lower() in result_text.lower():
+                        suggested_category = category
+                        break
+
                 return {
-                    "purpose": "Could not analyze",
-                    "suggested_category": "Others", 
-                    "reasoning": "AI response parsing failed",
-                    "confidence": 0
+                    "purpose": "AI analysis",
+                    "suggested_category": suggested_category,
+                    "reasoning":
+                    f"Extracted from text response: {result_text[:100]}...",
+                    "confidence": 30
                 }
 
         except Exception as e:
@@ -877,18 +1090,21 @@ class AICategorizer:
             return {
                 "purpose": "Analysis failed",
                 "suggested_category": "Others",
-                "reasoning": f"AI error: {str(e)}",
+                "reasoning": f"AI request failed: {str(e)}",
                 "confidence": 0
             }
 
     def _batch_analyze_with_ai(self, narrations: List[str]) -> List[dict]:
         """Batch analyze multiple narrations with AI for efficiency"""
-        if not openai.api_key or not narrations:
-            return [{"suggested_category": "Others", "confidence": 0} for _ in narrations]
+        if not TOGETHER_API_KEY or not narrations:
+            return [{
+                "suggested_category": "Others",
+                "confidence": 0
+            } for _ in narrations]
 
         results = []
         all_categories = list(self.get_all_categories())
-        
+
         # Get categories with their types for context
         categories_info = ""
         for cat in all_categories:
@@ -898,22 +1114,22 @@ class AICategorizer:
         # Process in batches to avoid token limits
         batch_size = 5
         for i in range(0, len(narrations), batch_size):
-            batch = narrations[i:i+batch_size]
-            
+            batch = narrations[i:i + batch_size]
+
             # Create batch prompt
             batch_prompt = f"""
             Analyze these bank transaction narrations and categorize each one.
-            
+
             Available categories with types:{categories_info}
 
             Transactions:
             """
-            
+
             for j, narration in enumerate(batch):
                 batch_prompt += f"\n{j+1}. \"{narration}\""
-            
+
             batch_prompt += f"""
-            
+
             Respond with a JSON array where each object has:
             {{
                 "purpose": "brief description in 2-4 words",
@@ -925,18 +1141,16 @@ class AICategorizer:
             """
 
             try:
-                from openai import OpenAI
-                client = OpenAI(
-                    api_key="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",
-                    base_url="https://openrouter.ai/api/v1"
-                )
+                client = Together(api_key=TOGETHER_API_KEY)
 
                 response = client.chat.completions.create(
-                    model="deepseek/deepseek-r1-0528:free",
-                    messages=[{"role": "user", "content": batch_prompt}],
+                    model="meta-llama/Llama-3.3-70B-Instruct-Turbo-Free",
+                    messages=[{
+                        "role": "user",
+                        "content": batch_prompt
+                    }],
                     temperature=0.2,
-                    max_tokens=500
-                )
+                    max_tokens=500)
 
                 result_text = response.choices[0].message.content.strip()
 
@@ -945,35 +1159,50 @@ class AICategorizer:
                     if isinstance(batch_results, list):
                         for result in batch_results:
                             # Validate suggested category
-                            if result.get('suggested_category') not in all_categories:
+                            if result.get('suggested_category'
+                                          ) not in all_categories:
                                 result['suggested_category'] = 'Others'
                         results.extend(batch_results)
                     else:
                         # Single result instead of array
-                        if batch_results.get('suggested_category') not in all_categories:
+                        if batch_results.get(
+                                'suggested_category') not in all_categories:
                             batch_results['suggested_category'] = 'Others'
                         results.extend([batch_results] * len(batch))
                 except json.JSONDecodeError:
                     # Fallback for parsing errors
-                    results.extend([{"suggested_category": "Others", "confidence": 0}] * len(batch))
+                    results.extend([{
+                        "suggested_category": "Others",
+                        "confidence": 0
+                    }] * len(batch))
 
             except Exception as e:
                 print(f"Batch AI analysis error: {e}")
-                results.extend([{"suggested_category": "Others", "confidence": 0}] * len(batch))
+                results.extend([{
+                    "suggested_category": "Others",
+                    "confidence": 0
+                }] * len(batch))
 
         return results
 
     def test_categorization(self, test_narrations=None):
         """Test categorization with sample narrations"""
         if test_narrations is None:
-            test_narrations = ["tution", "K Singhvi and Associates", "Vegetables"]
+            test_narrations = [
+                "tution", "K Singhvi and Associates", "Vegetables"
+            ]
 
         print("=== Categorization Test ===")
-        print(f"Available custom categories: {list(self.custom_categories.keys()) if isinstance(self.custom_categories, dict) else 'List format'}")
+        print(
+            f"Available custom categories: {list(self.custom_categories.keys()) if isinstance(self.custom_categories, dict) else 'List format'}"
+        )
 
         for narration in test_narrations:
-            category, ai_flag, similarity = self._categorize_single_transaction_with_similarity(narration)
-            print(f"'{narration}' -> '{category}' (AI: {ai_flag}, Similarity: {similarity}%)")
+            category, ai_flag, similarity = self._categorize_single_transaction_with_similarity(
+                narration)
+            print(
+                f"'{narration}' -> '{category}' (AI: {ai_flag}, Similarity: {similarity}%)"
+            )
         print("=== End Test ===\n")
 
     def categorize_transactions(self, df: pd.DataFrame) -> pd.DataFrame:
@@ -1002,66 +1231,75 @@ class AICategorizer:
         try:
             # Step 1: Rule-based categorization with similarity scoring
             pending_for_ai = []
-            
+
             for idx, row in df_copy.iterrows():
                 if pd.isna(row['narration']) or row['narration'].strip() == '':
                     continue
 
                 narration_lower = str(row['narration']).lower().strip()
-                
+
                 # Check cache first
-                if narration_lower in self.categorization_cache.get("patterns", {}):
-                    cached_result = self.categorization_cache["patterns"][narration_lower]
+                if narration_lower in self.categorization_cache.get(
+                        "patterns", {}):
+                    cached_result = self.categorization_cache["patterns"][
+                        narration_lower]
                     if isinstance(cached_result, str):
                         df_copy.loc[idx, 'category'] = cached_result
                         df_copy.loc[idx, 'similarity_score'] = 100
                         df_copy.loc[idx, 'ai_categorized'] = False
                         continue
                     elif isinstance(cached_result, dict):
-                        df_copy.loc[idx, 'category'] = cached_result.get('category', 'Others')
-                        df_copy.loc[idx, 'similarity_score'] = cached_result.get('confidence', 0) * 100
+                        df_copy.loc[idx, 'category'] = cached_result.get(
+                            'category', 'Others')
+                        df_copy.loc[idx,
+                                    'similarity_score'] = cached_result.get(
+                                        'confidence', 0) * 100
                         df_copy.loc[idx, 'ai_categorized'] = True
                         continue
 
                 # Apply rule-based categorization
-                category, similarity_score = self._apply_similarity_based_categorization(narration_lower)
-                
-                if similarity_score >= 50:
+                category, similarity_score = self._apply_similarity_based_categorization(
+                    narration_lower)
+
+                if similarity_score >= 30:  # Lowered threshold to allow more AI usage
                     # High confidence rule match
                     df_copy.loc[idx, 'category'] = category
                     df_copy.loc[idx, 'similarity_score'] = similarity_score
                     df_copy.loc[idx, 'ai_categorized'] = False
-                    
+
                     # Cache the result
-                    self.categorization_cache["patterns"][narration_lower] = category
+                    self.categorization_cache["patterns"][
+                        narration_lower] = category
                 else:
                     # Low confidence or no match - add to AI pending list
                     pending_for_ai.append((idx, narration_lower))
 
             # Step 2: Batch AI categorization for pending transactions
-            if pending_for_ai and openai.api_key:
+            if pending_for_ai and TOGETHER_API_KEY:
                 # Prepare batch prompt for AI
                 narrations_for_ai = [item[1] for item in pending_for_ai]
                 ai_results = self._batch_analyze_with_ai(narrations_for_ai)
-                
+
                 for i, (idx, narration) in enumerate(pending_for_ai):
                     if i < len(ai_results) and ai_results[i]:
                         result = ai_results[i]
                         confidence = result.get('confidence', 0)
-                        suggested_category = result.get('suggested_category', 'Others')
-                        
-                        if confidence >= 50:
+                        suggested_category = result.get(
+                            'suggested_category', 'Others')
+
+                        if confidence >= 30:  # Lowered threshold for AI
                             # AI has good confidence
                             df_copy.loc[idx, 'category'] = suggested_category
                             df_copy.loc[idx, 'similarity_score'] = confidence
                             df_copy.loc[idx, 'ai_categorized'] = True
-                            
+
                             # Cache the AI result
-                            self.categorization_cache["patterns"][narration] = {
-                                "category": suggested_category,
-                                "confidence": confidence / 100.0,
-                                "timestamp": datetime.now().isoformat()
-                            }
+                            self.categorization_cache["patterns"][
+                                narration] = {
+                                    "category": suggested_category,
+                                    "confidence": confidence / 100.0,
+                                    "timestamp": datetime.now().isoformat()
+                                }
                         else:
                             # Low AI confidence - put in Suspense
                             df_copy.loc[idx, 'category'] = 'Suspense'

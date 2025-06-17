@@ -12,4 +12,5 @@ dependencies = [
     "pypdf2>=3.0.1",
     "python-levenshtein>=0.27.1",
     "streamlit>=1.45.1",
+    "together>=1.5.15",
 ]

@@ -44,7 +44,6 @@ class ChartGenerator:
             # Create combined data
             category_data = []
             labels = []
-            colors = []
             
             for category in sorted(all_categories):
                 income_amount = income_totals.get(category, 0)
@@ -53,22 +52,20 @@ class ChartGenerator:
                 if income_amount > 0:
                     category_data.append(income_amount)
                     labels.append(f"{category} (Income)")
-                    colors.append('#2ECC71')  # Green for income
                 
                 if expense_amount > 0:
                     category_data.append(expense_amount)
                     labels.append(f"{category} (Expense)")
-                    colors.append('#E74C3C')  # Red for expenses
 
             if not category_data:
                 return None
 
-            # Create pie chart
+            # Create pie chart with multiple colors
             fig = px.pie(
                 values=category_data,
                 names=labels,
                 title="Income & Spending Distribution by Category",
-                color_discrete_sequence=colors if len(colors) == len(category_data) else px.colors.qualitative.Set3
+                color_discrete_sequence=self.color_palette  # Use the defined color palette
             )
 
             fig.update_traces(
