@@ -1,83 +1,83 @@
-date,narration,amount,type,source_file,category,ai_categorized,similarity_score
-2025-04-01,Salary credited from Singhvi & Co.,78000.0,credit,Book1.xlsx,Salary,False,100.0
-2025-04-02,Amazon India - Online shopping purchase,-2899.0,debit,Book1.xlsx,Shopping,False,100.0
-2025-04-03,Uber trip - Office to client meeting,-344.0,debit,Book1.xlsx,Food,False,100.0
-2025-04-04,Interest on Fixed Deposit - ICICI Bank,1450.0,credit,Book1.xlsx,Shopping,False,80.0
-2025-04-05,Payment to Zomato for dinner at Cafe Delhi Heights,-870.0,debit,Book1.xlsx,Salary,False,100.0
-2025-04-06,Tuition fees received from client (Math 11th Std),6000.0,credit,Book1.xlsx,Suspense,True,0.0
-2025-04-06,Google Pay - Refund for failed Amazon payment,1239.0,credit,Book1.xlsx,Salary,False,100.0
-2025-04-07,NEFT to HDFC Credit Card ending 6271,-4500.0,debit,Book1.xlsx,EMI,False,100.0
-2025-04-08,Freelance payment received via Razorpay,12500.0,credit,Book1.xlsx,Salary,False,100.0
-2025-04-08,Swiggy order - breakfast & tea (work from home),-310.0,debit,Book1.xlsx,Food,False,100.0
-2025-04-09,Big Basket grocery order - monthly stock,-2850.0,debit,Book1.xlsx,Investment,False,100.0
-2025-04-10,Movie ticket payment via BookMyShow,-450.0,debit,Book1.xlsx,Salary,False,100.0
-2025-04-10,Dividend payout from Adani Enterprises,720.0,credit,Book1.xlsx,Salary,False,100.0
-2025-04-11,Electricity bill payment to BESCOM Bangalore,-1320.0,debit,Book1.xlsx,Salary,False,100.0
-2025-04-12,Home EMI to SBI Home Loan,-14800.0,debit,Book1.xlsx,EMI,False,100.0
-2025-04-13,Cred cashback credited,123.0,credit,Book1.xlsx,EMI,False,100.0
-2025-04-14,CultFit gym monthly membership fee,-1750.0,debit,Book1.xlsx,Suspense,True,0.0
-2025-04-15,Google AdSense payout for March,1840.0,credit,Book1.xlsx,Salary,False,100.0
-2025-04-16,Flipkart order - mobile cover & powerbank,-1279.0,debit,Book1.xlsx,Shopping,False,100.0
-2025-04-17,D-Mart shopping - household items,-1930.0,debit,Book1.xlsx,Shopping,False,100.0
-2025-04-18,Friend UPI refund for dinner at Koshy’s,850.0,credit,Book1.xlsx,Food,False,100.0
-2025-04-19,BMS subscription auto-renewal,-99.0,debit,Book1.xlsx,Suspense,True,0.0
-2025-04-20,Tuition fees received from Rohit (12th Std),8000.0,credit,Book1.xlsx,Suspense,True,0.0
-2025-04-21,Uber trip to airport - client drop,-520.0,debit,Book1.xlsx,Food,False,100.0
-2025-04-22,Received payment from freelancing project (Web Dev),16500.0,credit,Book1.xlsx,Salary,False,100.0
-2025-04-23,Amazon Prime annual renewal,-1499.0,debit,Book1.xlsx,Shopping,False,100.0
-2025-04-24,Indane gas cylinder payment via Bharat BillPay,-1120.0,debit,Book1.xlsx,Salary,False,100.0
-2025-04-25,Received bank interest for April,980.0,credit,Book1.xlsx,Suspense,True,0.0
-2025-04-26,Recharge via PhonePe for Airtel number,-249.0,debit,Book1.xlsx,Utilities,False,100.0
-2025-04-27,Taxi fare - client visit MG Road,-310.0,debit,Book1.xlsx,Transportation,False,100.0
-2025-04-28,Amazon refund for defective item,1899.0,credit,Book1.xlsx,Shopping,False,100.0
-2025-04-29,Tuition fees - IIT JEE batch (Group of 3 students),18000.0,credit,Book1.xlsx,Suspense,True,0.0
-2025-04-30,Swiggy Instamart snacks & cold drinks,-430.0,debit,Book1.xlsx,Food,False,100.0
-2025-05-01,Monthly salary from Singhvi & Co.,78000.0,credit,Book1.xlsx,Salary,False,100.0
-2025-05-03,Doctor consultation - Fortis Hospital,-950.0,debit,Book1.xlsx,Healthcare,False,100.0
-2025-05-04,Apple iCloud subscription (monthly),-75.0,debit,Book1.xlsx,Suspense,True,0.0
-2025-05-05,Dividend - Axis Mutual Fund,950.0,credit,Book1.xlsx,Investment,False,100.0
-2025-05-06,PayTM payment - PVR movie snacks,-460.0,debit,Book1.xlsx,Salary,False,100.0
-2025-05-07,Water bill for April (BWSSB),-310.0,debit,Book1.xlsx,Utilities,False,100.0
-2025-05-08,Received tuition for CBSE 10th science student,5000.0,credit,Book1.xlsx,Suspense,True,0.0
-2025-05-10,Groceries - Nature’s Basket Koramangala,-1960.0,debit,Book1.xlsx,Salary,False,80.0
-2025-05-12,Freelance payout via Payoneer (Design work),14500.0,credit,Book1.xlsx,Salary,False,100.0
-2025-05-13,Electricity bill (May) - BESCOM,-1380.0,debit,Book1.xlsx,Utilities,False,100.0
-2025-05-14,EMI - Bajaj Finserv Personal Loan,-7300.0,debit,Book1.xlsx,EMI,False,100.0
-2025-05-15,Received cashback from CRED for electricity bill,120.0,credit,Book1.xlsx,Utilities,False,100.0
-2025-05-17,Uber ride to JP Nagar for tuition,-280.0,debit,Book1.xlsx,Food,False,100.0
-2025-05-18,Zomato lunch order - Sunday special,-620.0,debit,Book1.xlsx,Food,False,100.0
-2025-05-19,Tuition batch (2 students - physics),10000.0,credit,Book1.xlsx,Suspense,True,0.0
-2025-05-20,Mutual fund SIP - Axis Bluechip,-2000.0,debit,Book1.xlsx,Investment,False,100.0
-2025-05-21,PayTM - Cafe Coffee Day bill,-370.0,debit,Book1.xlsx,Salary,False,100.0
-2025-05-22,Reimbursement - client travel allowance,1500.0,credit,Book1.xlsx,Suspense,False,100.0
-2025-05-23,Metro recharge card top-up,-100.0,debit,Book1.xlsx,Transportation,False,100.0
-2025-05-24,Cinema ticket via PayTM Movies,-420.0,debit,Book1.xlsx,Salary,False,100.0
-2025-05-25,Interest on RD account,1150.0,credit,Book1.xlsx,Shopping,False,80.0
-2025-05-26,Monthly salary Singhvi & Co.,78000.0,credit,Book1.xlsx,Salary,False,100.0
-2025-05-28,Recharge - Tata Sky monthly pack,-399.0,debit,Book1.xlsx,Suspense,True,0.0
-2025-05-29,Received UPI from friend for split cab fare,280.0,credit,Book1.xlsx,Food,False,100.0
-2025-05-30,Amazon Pantry groceries,-2175.0,debit,Book1.xlsx,Shopping,False,100.0
-2025-06-01,Salary,78000.0,credit,Book1.xlsx,Salary,False,100.0
-2025-06-03,Flipkart - Keyboard & Mouse combo,-1650.0,debit,Book1.xlsx,Shopping,False,100.0
-2025-06-05,BMS OTT monthly subscription,-149.0,debit,Book1.xlsx,Suspense,True,0.0
-2025-06-06,Tuition advance received (June batch),9000.0,credit,Book1.xlsx,Suspense,True,0.0
-2025-06-08,Internet bill - Airtel broadband,-999.0,debit,Book1.xlsx,Utilities,False,100.0
-2025-06-09,PayTM - McDonald's order,-440.0,debit,Book1.xlsx,Salary,False,100.0
-2025-06-10,Interest income from FD,1120.0,credit,Book1.xlsx,Salary,False,100.0
-2025-06-11,Swiggy order - office lunch,-310.0,debit,Book1.xlsx,Food,False,100.0
-2025-06-12,Phone recharge via PhonePe,-299.0,debit,Book1.xlsx,Utilities,False,100.0
-2025-06-13,Spotify premium renewal,-119.0,debit,Book1.xlsx,Entertainment,False,100.0
-2025-06-14,Client payout - Design project milestone 2,9000.0,credit,Book1.xlsx,Salary,False,100.0
-2025-06-15,Electricity bill - June,-1350.0,debit,Book1.xlsx,Utilities,False,100.0
-2025-06-16,Tuition group (IIT physics - 3 students),18000.0,credit,Book1.xlsx,Suspense,True,0.0
-2025-06-18,Zara apparel - online order,-3290.0,debit,Book1.xlsx,Suspense,True,0.0
-2025-06-19,Google Pay - 50 cashback received,50.0,credit,Book1.xlsx,Salary,False,100.0
-2025-06-20,Transfer to wife's account via NEFT,-5000.0,debit,Book1.xlsx,Salary,False,80.0
-2025-06-21,Uber trip to Electronic City,-440.0,debit,Book1.xlsx,Food,False,100.0
-2025-06-22,Dine-out at Empire Restaurant,-890.0,debit,Book1.xlsx,Food,False,100.0
-2025-06-23,Received NEFT from client (Consulting),18500.0,credit,Book1.xlsx,Suspense,True,0.0
-2025-06-24,Gold investment (MMTC PAMP),-5000.0,debit,Book1.xlsx,Investment,False,100.0
-2025-06-25,Dividend credited - Reliance MF,980.0,credit,Book1.xlsx,Investment,False,100.0
-2025-06-26,EMI - Home loan SBI,-14800.0,debit,Book1.xlsx,EMI,False,100.0
-2025-06-28,Zomato Sunday dinner - friends,-1240.0,debit,Book1.xlsx,Food,False,100.0
-2025-06-30,Received tuition payment (3 students combined),16500.0,credit,Book1.xlsx,Salary,False,100.0
+date,narration,amount,type,source_file,category,processing_type,confidence,cleaned_narration
+2025-04-01,MP08_Salary credited from Singhvi & Co.,78000.0,credit,mp08.xlsx,Salary,Software,100.0,mp08_salary credited singhvi & co.
+2025-04-02,MP08_Amazon India - Online shopping purchase,-2899.0,debit,mp08.xlsx,Shopping,AI,95.0,mp08_amazon india - online shopping purchase
+2025-04-03,MP08_Uber trip - Office to client meeting,-344.0,debit,mp08.xlsx,Food,Software,100.0,mp08_uber trip - office client meeting
+2025-04-04,MP08_Interest on Fixed Deposit - ICICI Bank,1450.0,credit,mp08.xlsx,Shopping,Software,80.0,mp08_interest on fixed deposit - icici bank
+2025-04-05,MP08_Payment to Zomato for dinner at Cafe Delhi Heights,-870.0,debit,mp08.xlsx,Salary,Software,100.0,mp08_payment zomato for dinner at cafe delhi heights
+2025-04-06,MP08_Tuition fees received from client (Math 11th Std),6000.0,credit,mp08.xlsx,Others,AI,80.0,mp08_tuition fees received client (math 11th std)
+2025-04-06,MP08_Google Pay - Refund for failed Amazon payment,1239.0,credit,mp08.xlsx,Salary,Software,100.0,mp08_google pay - refund for failed amazon payment
+2025-04-07,MP08_NEFT to HDFC Credit Card ending 6271,-4500.0,debit,mp08.xlsx,EMI,Software,100.0,mp08_neft hdfc credit card ending 6271
+2025-04-08,MP08_Freelance payment received via Razorpay,12500.0,credit,mp08.xlsx,Salary,Software,100.0,mp08_freelance payment received via razorpay
+2025-04-08,MP08_Swiggy order - breakfast & tea (work from home),-310.0,debit,mp08.xlsx,Food,Software,100.0,mp08_swiggy order - breakfast & tea (work home)
+2025-04-09,MP08_Big Basket grocery order - monthly stock,-2850.0,debit,mp08.xlsx,Investment,Software,100.0,mp08_big basket grocery order - monthly stock
+2025-04-10,MP08_Movie ticket payment via BookMyShow,-450.0,debit,mp08.xlsx,Salary,Software,100.0,mp08_movie ticket payment via bookmyshow
+2025-04-10,MP08_Dividend payout from Adani Enterprises,720.0,credit,mp08.xlsx,Salary,Software,100.0,mp08_dividend payout adani enterprises
+2025-04-11,MP08_Electricity bill payment to BESCOM Bangalore,-1320.0,debit,mp08.xlsx,Salary,Software,100.0,mp08_electricity bill payment bescom bangalore
+2025-04-12,MP08_Home EMI to SBI Home Loan,-14800.0,debit,mp08.xlsx,EMI,Software,100.0,mp08_home emi sbi home loan
+2025-04-13,MP08_Cred cashback credited,123.0,credit,mp08.xlsx,EMI,Software,100.0,mp08_cred cashback credited
+2025-04-14,MP08_CultFit gym monthly membership fee,-1750.0,debit,mp08.xlsx,Entertainment,AI,85.0,mp08_cultfit gym monthly membership fee
+2025-04-15,MP08_Google AdSense payout for March,1840.0,credit,mp08.xlsx,Salary,Software,100.0,mp08_google adsense payout for march
+2025-04-16,MP08_Flipkart order - mobile cover & powerbank,-1279.0,debit,mp08.xlsx,Shopping,Software,100.0,mp08_flipkart order - mobile cover & powerbank
+2025-04-17,MP08_D-Mart shopping - household items,-1930.0,debit,mp08.xlsx,Shopping,Software,100.0,mp08_d-mart shopping - household items
+2025-04-18,MP08_Friend UPI refund for dinner at Koshy’s,850.0,credit,mp08.xlsx,Investment,Software,100.0,mp08_friend refund for dinner at koshy’s
+2025-04-19,MP08_BMS subscription auto-renewal,-99.0,debit,mp08.xlsx,Entertainment,AI,70.0,mp08_bms subscription auto-renewal
+2025-04-20,MP08_Tuition fees received from Rohit (12th Std),8000.0,credit,mp08.xlsx,Others,AI,90.0,mp08_tuition fees received rohit (12th std)
+2025-04-21,MP08_Uber trip to airport - client drop,-520.0,debit,mp08.xlsx,Food,Software,100.0,mp08_uber trip airport - client drop
+2025-04-22,MP08_Received payment from freelancing project (Web Dev),16500.0,credit,mp08.xlsx,Salary,Software,100.0,mp08_received payment freelancing project (web dev)
+2025-04-23,MP08_Amazon Prime annual renewal,-1499.0,debit,mp08.xlsx,Shopping,Software,100.0,mp08_amazon prime annual renewal
+2025-04-24,MP08_Indane gas cylinder payment via Bharat BillPay,-1120.0,debit,mp08.xlsx,Salary,Software,100.0,mp08_indane gas cylinder payment via bharat billpay
+2025-04-25,MP08_Received bank interest for April,980.0,credit,mp08.xlsx,Others,AI,90.0,mp08_received bank interest for april
+2025-04-26,MP08_Recharge via PhonePe for Airtel number,-249.0,debit,mp08.xlsx,Utilities,AI,90.0,mp08_recharge via for airtel number
+2025-04-27,MP08_Taxi fare - client visit MG Road,-310.0,debit,mp08.xlsx,Transportation,Software,100.0,mp08_taxi fare - client visit mg road
+2025-04-28,MP08_Amazon refund for defective item,1899.0,credit,mp08.xlsx,Shopping,Software,100.0,mp08_amazon refund for defective item
+2025-04-29,MP08_Tuition fees - IIT JEE batch (Group of 3 students),18000.0,credit,mp08.xlsx,Others,AI,90.0,mp08_tuition fees - iit jee batch (group of 3 students)
+2025-04-30,MP08_Swiggy Instamart snacks & cold drinks,-430.0,debit,mp08.xlsx,Food,Software,100.0,mp08_swiggy instamart snacks & cold drinks
+2025-05-01,MP08_Monthly salary from Singhvi & Co.,78000.0,credit,mp08.xlsx,Salary,Software,100.0,mp08_monthly salary singhvi & co.
+2025-05-03,MP08_Doctor consultation - Fortis Hospital,-950.0,debit,mp08.xlsx,Healthcare,Software,100.0,mp08_doctor consultation - fortis hospital
+2025-05-04,MP08_Apple iCloud subscription (monthly),-75.0,debit,mp08.xlsx,Entertainment,AI,85.0,mp08_apple icloud subscription (monthly)
+2025-05-05,MP08_Dividend - Axis Mutual Fund,950.0,credit,mp08.xlsx,Investment,Software,100.0,mp08_dividend - axis mutual fund
+2025-05-06,MP08_PayTM payment - PVR movie snacks,-460.0,debit,mp08.xlsx,Salary,Software,100.0,mp08_paytm payment - pvr movie snacks
+2025-05-07,MP08_Water bill for April (BWSSB),-310.0,debit,mp08.xlsx,Utilities,Software,100.0,mp08_water bill for april (bwssb)
+2025-05-08,MP08_Received tuition for CBSE 10th science student,5000.0,credit,mp08.xlsx,Others,AI,85.0,mp08_received tuition for cbse 10th science student
+2025-05-10,MP08_Groceries - Nature’s Basket Koramangala,-1960.0,debit,mp08.xlsx,Salary,Software,80.0,mp08_groceries - nature’s basket koramangala
+2025-05-12,MP08_Freelance payout via Payoneer (Design work),14500.0,credit,mp08.xlsx,Salary,Software,100.0,mp08_freelance payout via payoneer (design work)
+2025-05-13,MP08_Electricity bill (May) - BESCOM,-1380.0,debit,mp08.xlsx,Utilities,Software,100.0,mp08_electricity bill (may) - bescom
+2025-05-14,MP08_EMI - Bajaj Finserv Personal Loan,-7300.0,debit,mp08.xlsx,EMI,Software,100.0,mp08_emi - bajaj finserv personal loan
+2025-05-15,MP08_Received cashback from CRED for electricity bill,120.0,credit,mp08.xlsx,Utilities,Software,100.0,mp08_received cashback cred for electricity bill
+2025-05-17,MP08_Uber ride to JP Nagar for tuition,-280.0,debit,mp08.xlsx,Food,Software,100.0,mp08_uber ride jp nagar for tuition
+2025-05-18,MP08_Zomato lunch order - Sunday special,-620.0,debit,mp08.xlsx,Food,Software,100.0,mp08_zomato lunch order - sunday special
+2025-05-19,MP08_Tuition batch (2 students - physics),10000.0,credit,mp08.xlsx,Others,AI,85.0,mp08_tuition batch (2 students - physics)
+2025-05-20,MP08_Mutual fund SIP - Axis Bluechip,-2000.0,debit,mp08.xlsx,Investment,Software,100.0,mp08_mutual fund sip - axis bluechip
+2025-05-21,MP08_PayTM - Cafe Coffee Day bill,-370.0,debit,mp08.xlsx,Salary,Software,100.0,mp08_paytm - cafe coffee day bill
+2025-05-22,MP08_Reimbursement - client travel allowance,1500.0,credit,mp08.xlsx,Transportation,AI,90.0,mp08_reimbursement - client travel allowance
+2025-05-23,MP08_Metro recharge card top-up,-100.0,debit,mp08.xlsx,Transportation,Software,100.0,mp08_metro recharge card top-up
+2025-05-24,MP08_Cinema ticket via PayTM Movies,-420.0,debit,mp08.xlsx,Entertainment,Software,100.0,mp08_cinema ticket via movies
+2025-05-25,MP08_Interest on RD account,1150.0,credit,mp08.xlsx,Shopping,Software,80.0,mp08_interest on rd account
+2025-05-26,MP08_Monthly salary Singhvi & Co.,78000.0,credit,mp08.xlsx,Salary,Software,100.0,mp08_monthly salary singhvi & co.
+2025-05-28,MP08_Recharge - Tata Sky monthly pack,-399.0,debit,mp08.xlsx,Entertainment,AI,90.0,mp08_recharge - tata sky monthly pack
+2025-05-29,MP08_Received UPI from friend for split cab fare,280.0,credit,mp08.xlsx,Transportation,AI,90.0,mp08_received friend for split cab fare
+2025-05-30,MP08_Amazon Pantry groceries,-2175.0,debit,mp08.xlsx,Shopping,Software,100.0,mp08_amazon pantry groceries
+2025-06-01,MP08_Salary,78000.0,credit,mp08.xlsx,Salary,Software,100.0,mp08_salary
+2025-06-03,MP08_Flipkart - Keyboard & Mouse combo,-1650.0,debit,mp08.xlsx,Shopping,Software,100.0,mp08_flipkart - keyboard & mouse combo
+2025-06-05,MP08_BMS OTT monthly subscription,-149.0,debit,mp08.xlsx,Entertainment,AI,90.0,mp08_bms ott monthly subscription
+2025-06-06,MP08_Tuition advance received (June batch),9000.0,credit,mp08.xlsx,Others,AI,85.0,mp08_tuition advance received (june batch)
+2025-06-08,MP08_Internet bill - Airtel broadband,-999.0,debit,mp08.xlsx,Utilities,Software,100.0,mp08_internet bill - airtel broadband
+2025-06-09,MP08_PayTM - McDonald's order,-440.0,debit,mp08.xlsx,Salary,Software,100.0,mp08_paytm - mcdonald's order
+2025-06-10,MP08_Interest income from FD,1120.0,credit,mp08.xlsx,Salary,Software,100.0,mp08_interest income fd
+2025-06-11,MP08_Swiggy order - office lunch,-310.0,debit,mp08.xlsx,Food,Software,100.0,mp08_swiggy order - office lunch
+2025-06-12,MP08_Phone recharge via PhonePe,-299.0,debit,mp08.xlsx,Utilities,Software,100.0,mp08_phone recharge via
+2025-06-13,MP08_Spotify premium renewal,-119.0,debit,mp08.xlsx,Entertainment,Software,100.0,mp08_spotify premium renewal
+2025-06-14,MP08_Client payout - Design project milestone 2,9000.0,credit,mp08.xlsx,Salary,Software,100.0,mp08_client payout - design project milestone 2
+2025-06-15,MP08_Electricity bill - June,-1350.0,debit,mp08.xlsx,Utilities,Software,100.0,mp08_electricity bill - june
+2025-06-16,MP08_Tuition group (IIT physics - 3 students),18000.0,credit,mp08.xlsx,Others,AI,85.0,mp08_tuition group (iit physics - 3 students)
+2025-06-18,MP08_Zara apparel - online order,-3290.0,debit,mp08.xlsx,Shopping,AI,95.0,mp08_zara apparel - online order
+2025-06-19,MP08_Google Pay - 50 cashback received,50.0,credit,mp08.xlsx,Salary,Software,100.0,mp08_google pay - 50 cashback received
+2025-06-20,MP08_Transfer to wife's account via NEFT,-5000.0,debit,mp08.xlsx,Salary,Software,80.0,mp08_transfer wife's account via neft
+2025-06-21,MP08_Uber trip to Electronic City,-440.0,debit,mp08.xlsx,Food,Software,100.0,mp08_uber trip electronic city
+2025-06-22,MP08_Dine-out at Empire Restaurant,-890.0,debit,mp08.xlsx,Food,Software,100.0,mp08_dine-out at empire restaurant
+2025-06-23,MP08_Received NEFT from client (Consulting),18500.0,credit,mp08.xlsx,Suspense,AI,95.0,mp08_received neft client (consulting)
+2025-06-24,MP08_Gold investment (MMTC PAMP),-5000.0,debit,mp08.xlsx,Investment,Software,100.0,mp08_gold investment (mmtc pamp)
+2025-06-25,MP08_Dividend credited - Reliance MF,980.0,credit,mp08.xlsx,Investment,Software,100.0,mp08_dividend credited - reliance mf
+2025-06-26,MP08_EMI - Home loan SBI,-14800.0,debit,mp08.xlsx,EMI,Software,100.0,mp08_emi - home loan sbi
+2025-06-28,MP08_Zomato Sunday dinner - friends,-1240.0,debit,mp08.xlsx,Food,Software,100.0,mp08_zomato sunday dinner - friends
+2025-06-30,MP08_Received tuition payment (3 students combined),16500.0,credit,mp08.xlsx,Salary,Software,100.0,mp08_received tuition payment (3 students combined)

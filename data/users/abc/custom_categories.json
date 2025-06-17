@@ -1,0 +1,16 @@
+{
+  "Interest Savings": {
+    "keywords": [
+      "savings",
+      "interest"
+    ],
+    "type": "income"
+  },
+  "Interest FD": {
+    "keywords": [
+      "FD",
+      "interest"
+    ],
+    "type": "income"
+  }
+}

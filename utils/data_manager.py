@@ -33,12 +33,19 @@ class DataManager:
         try:
             if os.path.exists(self.transactions_file):
                 df = pd.read_csv(self.transactions_file)
+                
+                # Ensure required columns exist for backward compatibility
+                if 'processing_type' not in df.columns:
+                    df['processing_type'] = 'Manual'
+                if 'confidence' not in df.columns:
+                    df['confidence'] = 0.0
+                
                 return df
             else:
-                return pd.DataFrame(columns=['date', 'narration', 'amount', 'type', 'source_file', 'category'])
+                return pd.DataFrame(columns=['date', 'narration', 'amount', 'type', 'source_file', 'category', 'processing_type', 'confidence'])
         except Exception as e:
             print(f"Failed to load transactions: {str(e)}")
-            return pd.DataFrame(columns=['date', 'narration', 'amount', 'type', 'source_file', 'category'])
+            return pd.DataFrame(columns=['date', 'narration', 'amount', 'type', 'source_file', 'category', 'processing_type', 'confidence'])
     
     def append_transactions(self, new_df: pd.DataFrame):
         """Append new transactions to existing data"""

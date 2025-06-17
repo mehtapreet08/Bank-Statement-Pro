@@ -1185,6 +1185,31 @@ Respond with JSON:
 
         return results
 
+    def update_category(self, category_name: str, keywords: List[str], category_type: str = "expense"):
+        """Update any category (default or custom)"""
+        if category_name in self.default_categories:
+            self.update_default_category(category_name, keywords, category_type)
+        else:
+            self.update_custom_category(category_name, keywords, category_type)
+
+    def reset_user_categories(self):
+        """Reset only user-specific categories, not global AI cache"""
+        # Reset custom categories to empty
+        self.custom_categories = {}
+        self._save_custom_categories()
+        
+        # Reset user-specific cache patterns but keep global AI learning
+        user_patterns = self.categorization_cache.get("patterns", {})
+        user_corrections = self.categorization_cache.get("corrections", {})
+        
+        # Clear user-specific patterns and corrections
+        self.categorization_cache["patterns"] = {}
+        self.categorization_cache["corrections"] = {}
+        self._save_categorization_cache()
+        
+        # Reinitialize patterns
+        self.category_patterns = self._initialize_category_patterns()
+
     def test_categorization(self, test_narrations=None):
         """Test categorization with sample narrations"""
         if test_narrations is None:
@@ -1205,122 +1230,251 @@ Respond with JSON:
             )
         print("=== End Test ===\n")
 
-    def categorize_transactions(self, df: pd.DataFrame) -> pd.DataFrame:
+    def categorize_transactions_new_logic(self, df: pd.DataFrame) -> pd.DataFrame:
         """
-        Categorize transactions using enhanced pattern matching and AI
-
-        Args:
-            df: DataFrame with transaction data
-
-        Returns:
-            DataFrame with added 'category' column
+        New 5-step categorization logic as per requirements
+        
+        STEP 1: Rule-based matching with >50% similarity -> "Software" processed
+        STEP 2: AI matching to existing categories with >80% confidence -> "AI" processed  
+        STEP 3: AI best guess with >20% confidence -> "AI" processed
+        STEP 4: Remaining transactions -> "Suspense"
+        STEP 5: Special rule for person/company names with value > ₹5000
         """
         if df.empty:
             return df
 
         df_copy = df.copy()
-
-        # Initialize columns if they don't exist
+        
+        # Initialize required columns
         if 'category' not in df_copy.columns:
             df_copy['category'] = 'Others'
-        if 'ai_categorized' not in df_copy.columns:
-            df_copy['ai_categorized'] = False
-        if 'similarity_score' not in df_copy.columns:
-            df_copy['similarity_score'] = 0.0
+        if 'processing_type' not in df_copy.columns:
+            df_copy['processing_type'] = 'Manual'
+        if 'confidence' not in df_copy.columns:
+            df_copy['confidence'] = 0.0
 
-        try:
-            # Step 1: Rule-based categorization with similarity scoring
-            pending_for_ai = []
+        # Clean narrations
+        df_copy['cleaned_narration'] = df_copy['narration'].apply(self._clean_narration_for_matching)
 
-            for idx, row in df_copy.iterrows():
-                if pd.isna(row['narration']) or row['narration'].strip() == '':
-                    continue
+        print(f"Processing {len(df_copy)} transactions with new logic")
 
-                narration_lower = str(row['narration']).lower().strip()
+        for idx, row in df_copy.iterrows():
+            if pd.isna(row['narration']) or row['narration'].strip() == '':
+                continue
 
-                # Check cache first
-                if narration_lower in self.categorization_cache.get(
-                        "patterns", {}):
-                    cached_result = self.categorization_cache["patterns"][
-                        narration_lower]
-                    if isinstance(cached_result, str):
-                        df_copy.loc[idx, 'category'] = cached_result
-                        df_copy.loc[idx, 'similarity_score'] = 100
-                        df_copy.loc[idx, 'ai_categorized'] = False
+            narration = str(row['narration']).strip()
+            cleaned_narration = row['cleaned_narration']
+            amount = abs(float(row.get('amount', 0)))
+
+            # Check cache first
+            narration_lower = narration.lower().strip()
+            if narration_lower in self.categorization_cache["patterns"]:
+                cached_category = self.categorization_cache["patterns"][narration_lower]
+                df_copy.loc[idx, 'category'] = cached_category
+                df_copy.loc[idx, 'processing_type'] = 'Software'
+                df_copy.loc[idx, 'confidence'] = 95
+                print(f"Cache hit: '{narration}' -> '{cached_category}'")
+                continue
+
+            # Check user corrections cache
+            if narration_lower in self.categorization_cache["corrections"]:
+                cached_category = self.categorization_cache["corrections"][narration_lower]
+                df_copy.loc[idx, 'category'] = cached_category
+                df_copy.loc[idx, 'processing_type'] = 'Software'
+                df_copy.loc[idx, 'confidence'] = 100
+                print(f"Correction cache hit: '{narration}' -> '{cached_category}'")
+                continue
+
+            # STEP 1: Rule-based matching with >50% similarity
+            category, similarity = self._apply_rule_based_matching(cleaned_narration)
+            if similarity > 50:
+                df_copy.loc[idx, 'category'] = category
+                df_copy.loc[idx, 'processing_type'] = 'Software'
+                df_copy.loc[idx, 'confidence'] = similarity
+                print(f"Rule-based match: '{narration}' -> '{category}' ({similarity}%)")
+                continue
+
+            # STEP 2 & 3: AI matching
+            if TOGETHER_API_KEY:
+                try:
+                    ai_result = self.analyze_narration_with_ai(narration)
+                    ai_confidence = ai_result.get('confidence', 0)
+                    ai_category = ai_result.get('suggested_category', 'Others')
+                    
+                    if ai_confidence > 80:
+                        df_copy.loc[idx, 'category'] = ai_category
+                        df_copy.loc[idx, 'processing_type'] = 'AI'
+                        df_copy.loc[idx, 'confidence'] = ai_confidence
+                        print(f"AI high confidence: '{narration}' -> '{ai_category}' ({ai_confidence}%)")
                         continue
-                    elif isinstance(cached_result, dict):
-                        df_copy.loc[idx, 'category'] = cached_result.get(
-                            'category', 'Others')
-                        df_copy.loc[idx,
-                                    'similarity_score'] = cached_result.get(
-                                        'confidence', 0) * 100
-                        df_copy.loc[idx, 'ai_categorized'] = True
+
+                    # STEP 3: AI best guess with >20% confidence
+                    if ai_confidence > 20:
+                        df_copy.loc[idx, 'category'] = ai_category
+                        df_copy.loc[idx, 'processing_type'] = 'AI'
+                        df_copy.loc[idx, 'confidence'] = ai_confidence
+                        print(f"AI low confidence: '{narration}' -> '{ai_category}' ({ai_confidence}%)")
                         continue
+                except Exception as e:
+                    print(f"AI analysis failed for '{narration}': {e}")
 
-                # Apply rule-based categorization
-                category, similarity_score = self._apply_similarity_based_categorization(
-                    narration_lower)
+            # STEP 5: Special rule for person/company names with value > ₹5000
+            if amount > 5000 and self._detect_person_company_name(cleaned_narration):
+                if row['amount'] < 0:  # Withdrawal
+                    df_copy.loc[idx, 'category'] = 'Assets'
+                else:  # Deposit
+                    df_copy.loc[idx, 'category'] = 'Liabilities'
+                df_copy.loc[idx, 'processing_type'] = 'AI'
+                df_copy.loc[idx, 'confidence'] = 75
+                print(f"Person/Company rule: '{narration}' -> '{df_copy.loc[idx, 'category']}'")
+                continue
 
-                if similarity_score >= 30:  # Lowered threshold to allow more AI usage
-                    # High confidence rule match
-                    df_copy.loc[idx, 'category'] = category
-                    df_copy.loc[idx, 'similarity_score'] = similarity_score
-                    df_copy.loc[idx, 'ai_categorized'] = False
+            # STEP 4: Remaining transactions go to Suspense
+            df_copy.loc[idx, 'category'] = 'Suspense'
+            df_copy.loc[idx, 'processing_type'] = 'Manual'
+            df_copy.loc[idx, 'confidence'] = 0
+            print(f"Suspense: '{narration}' -> 'Suspense'")
 
-                    # Cache the result
-                    self.categorization_cache["patterns"][
-                        narration_lower] = category
-                else:
-                    # Low confidence or no match - add to AI pending list
-                    pending_for_ai.append((idx, narration_lower))
-
-            # Step 2: Batch AI categorization for pending transactions
-            if pending_for_ai and TOGETHER_API_KEY:
-                # Prepare batch prompt for AI
-                narrations_for_ai = [item[1] for item in pending_for_ai]
-                ai_results = self._batch_analyze_with_ai(narrations_for_ai)
-
-                for i, (idx, narration) in enumerate(pending_for_ai):
-                    if i < len(ai_results) and ai_results[i]:
-                        result = ai_results[i]
-                        confidence = result.get('confidence', 0)
-                        suggested_category = result.get(
-                            'suggested_category', 'Others')
-
-                        if confidence >= 30:  # Lowered threshold for AI
-                            # AI has good confidence
-                            df_copy.loc[idx, 'category'] = suggested_category
-                            df_copy.loc[idx, 'similarity_score'] = confidence
-                            df_copy.loc[idx, 'ai_categorized'] = True
-
-                            # Cache the AI result
-                            self.categorization_cache["patterns"][
-                                narration] = {
-                                    "category": suggested_category,
-                                    "confidence": confidence / 100.0,
-                                    "timestamp": datetime.now().isoformat()
-                                }
-                        else:
-                            # Low AI confidence - put in Suspense
-                            df_copy.loc[idx, 'category'] = 'Suspense'
-                            df_copy.loc[idx, 'similarity_score'] = confidence
-                            df_copy.loc[idx, 'ai_categorized'] = True
-                    else:
-                        # AI failed or no result - put in Suspense
-                        df_copy.loc[idx, 'category'] = 'Suspense'
-                        df_copy.loc[idx, 'similarity_score'] = 0
-                        df_copy.loc[idx, 'ai_categorized'] = True
-            else:
-                # No AI available - put all pending in Suspense
-                for idx, narration in pending_for_ai:
-                    df_copy.loc[idx, 'category'] = 'Suspense'
-                    df_copy.loc[idx, 'similarity_score'] = 0
-                    df_copy.loc[idx, 'ai_categorized'] = False
-
-            # Save updated cache
-            self._save_categorization_cache()
-
-        except Exception as e:
-            print(f"Error during categorization: {str(e)}")
-
+        # Save updated cache
+        self._save_categorization_cache()
+        
         return df_copy
+
+    def _clean_narration_for_matching(self, narration):
+        """Clean narration data for better matching"""
+        if pd.isna(narration):
+            return ""
+        
+        text = str(narration).lower()
+        # Remove special characters
+        text = re.sub(r'[\\/|@#:,]', ' ', text)
+        # Remove common payment terms
+        text = re.sub(r'\b(upi|paytm|gpay|phonepe|to|from|txn|transaction|ref|ch\. no\.)\b', '', text)
+        # Remove long numbers (transaction IDs)
+        text = re.sub(r'\d{5,}', '', text)
+        # Normalize spaces
+        text = re.sub(r'\s+', ' ', text)
+        return text.strip()
+
+    def _apply_rule_based_matching(self, cleaned_narration):
+        """Apply rule-based categorization and return category with similarity score"""
+        best_category = "Others"
+        best_similarity = 0
+
+        # Check against all category patterns
+        for category, pattern in self.category_patterns.items():
+            if pattern.search(cleaned_narration):
+                # Calculate similarity based on keyword matches
+                keywords = self._get_category_keywords(category)
+                similarity = self._calculate_keyword_similarity(cleaned_narration, keywords)
+                if similarity > best_similarity:
+                    best_similarity = similarity
+                    best_category = category
+
+        # Also check similarity-based matching
+        if best_similarity < 50:
+            similarity_category, similarity_score = self._apply_similarity_based_categorization(cleaned_narration)
+            if similarity_score > best_similarity:
+                best_similarity = similarity_score
+                best_category = similarity_category
+
+        return best_category, best_similarity
+
+    def _get_category_keywords(self, category):
+        """Get keywords for a specific category"""
+        # Check default categories
+        if category in self.default_categories:
+            category_data = self.default_categories[category]
+            if isinstance(category_data, dict):
+                return category_data.get('keywords', [])
+            else:
+                return category_data
+
+        # Check custom categories
+        if isinstance(self.custom_categories, dict) and category in self.custom_categories:
+            category_data = self.custom_categories[category]
+            if isinstance(category_data, dict):
+                return category_data.get('keywords', [])
+            else:
+                return category_data
+
+        return []
+
+    def _calculate_keyword_similarity(self, narration, keywords):
+        """Calculate similarity percentage between narration and keywords"""
+        if not keywords or not narration:
+            return 0
+
+        matches = 0
+        total_keywords = len(keywords)
+        
+        for keyword in keywords:
+            if keyword and keyword.lower() in narration.lower():
+                matches += 1
+
+        return round((matches / total_keywords) * 100) if total_keywords > 0 else 0
+
+    def _detect_person_company_name(self, cleaned_narration):
+        """Detect if narration contains person or company name"""
+        # Simple heuristics for person/company detection
+        person_indicators = [
+            'pvt ltd', 'private limited', 'ltd', 'llp', 'inc', 'corp',
+            'company', 'enterprises', 'solutions', 'services', 'consulting'
+        ]
+        
+        # Check for company indicators
+        for indicator in person_indicators:
+            if indicator in cleaned_narration.lower():
+                return True
+        
+        # Check for proper nouns (basic heuristic)
+        words = cleaned_narration.split()
+        proper_noun_count = sum(1 for word in words if len(word) > 2 and word.istitle())
+        
+        return proper_noun_count >= 2  # At least 2 proper nouns suggests name
+
+    def categorize_transactions(self, df: pd.DataFrame) -> pd.DataFrame:
+        """
+        Legacy method - calls new logic for backward compatibility
+        """
+        return self.categorize_transactions_new_logic(df)
+
+    def _apply_rule_based_matching(self, cleaned_narration):
+        """Apply rule-based categorization and return category with similarity score"""
+        best_category = "Others"
+        best_similarity = 0
+
+        # Check against all category patterns
+        for category, pattern in self.category_patterns.items():
+            if pattern.search(cleaned_narration):
+                # Calculate similarity based on keyword matches
+                keywords = self._get_category_keywords(category)
+                similarity = self._calculate_keyword_similarity(cleaned_narration, keywords)
+                if similarity > best_similarity:
+                    best_similarity = similarity
+                    best_category = category
+
+        # Also check similarity-based matching
+        if best_similarity < 50:
+            similarity_category, similarity_score = self._apply_similarity_based_categorization(cleaned_narration)
+            if similarity_score > best_similarity:
+                best_similarity = similarity_score
+                best_category = similarity_category
+
+        return best_category, best_similarity
+
+    def _clean_narration_for_matching(self, narration):
+        """Clean narration data for better matching"""
+        if pd.isna(narration):
+            return ""
+        
+        text = str(narration).lower()
+        # Remove special characters
+        text = re.sub(r'[\\/|@#:,]', ' ', text)
+        # Remove common payment terms
+        text = re.sub(r'\b(upi|paytm|gpay|phonepe|to|from|txn|transaction|ref|ch\. no\.)\b', '', text)
+        # Remove long numbers (transaction IDs)
+        text = re.sub(r'\d{5,}', '', text)
+        # Normalize spaces
+        text = re.sub(r'\s+', ' ', text)
+        return text.strip()

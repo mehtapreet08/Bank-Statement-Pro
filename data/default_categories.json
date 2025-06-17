@@ -1,43 +1,547 @@
-
 {
-  "Salary": {
-    "keywords": ["salary", "wage", "payroll", "income", "pay"],
+  "Salary & Compensation": {
+    "keywords": [
+      "salary",
+      "wage",
+      "payroll",
+      "income",
+      "pay",
+      "remuneration",
+      "earnings",
+      "commission",
+      "stipend",
+      "bonus",
+      "allowance",
+      "incentive",
+      "honorarium",
+      "overtime"
+    ],
     "type": "income"
   },
-  "Food": {
-    "keywords": ["restaurant", "food", "dining", "cafe", "kitchen", "meal", "swiggy", "zomato", "uber eats"],
+  "Professional Fees Received": {
+    "keywords": [
+      "professional fee",
+      "consulting income",
+      "freelance income",
+      "consultancy charges",
+      "service fees",
+      "retainer",
+      "advisor fee",
+      "legal fees received",
+      "audit fees received"
+    ],
+    "type": "income"
+  },
+  "Client Reimbursements": {
+    "keywords": [
+      "reimbursement",
+      "reimbursed",
+      "client reimbursement",
+      "expense claim",
+      "business expense reimbursed",
+      "travel reimbursed",
+      "project expense reimbursement"
+    ],
+    "type": "income"
+  },
+  "Business Revenue": {
+    "keywords": [
+      "sales",
+      "revenue",
+      "billed",
+      "earned",
+      "fees received",
+      "turnover",
+      "product sales",
+      "services rendered",
+      "export income",
+      "domestic sales",
+      "project income",
+      "maintenance charges received",
+      "commission income",
+      "billed service",
+      "service income",
+      "consulting income",
+      "fees earned",
+      "export sales",
+      "consultancy fee"
+    ],
+    "type": "income"
+  },
+  "Grants & Subsidies": {
+    "keywords": [
+      "grant",
+      "subsidy",
+      "government grant",
+      "startup fund",
+      "research grant",
+      "state subsidy"
+    ],
+    "type": "income"
+  },
+  "Dividends & Investment Income": {
+    "keywords": [
+      "dividend",
+      "interest income",
+      "capital gain",
+      "investment income",
+      "fd interest",
+      "rd interest",
+      "bond interest",
+      "mutual fund dividend"
+    ],
+    "type": "income"
+  },
+  "Client Advance Received": {
+    "keywords": [
+      "advance received",
+      "client advance",
+      "retainer received",
+      "project advance",
+      "booking advance"
+    ],
+    "type": "liability"
+  },
+  "Refunds & Returns Received": {
+    "keywords": [
+      "refund received",
+      "cashback",
+      "product return refund",
+      "wallet credit",
+      "rebate"
+    ],
+    "type": "income"
+  },
+  "Loan Received": {
+    "keywords": [
+      "loan received",
+      "bank loan disbursed",
+      "borrowed",
+      "personal loan credit",
+      "working capital loan"
+    ],
+    "type": "liability"
+  },
+  "Rental Income": {
+    "keywords": [
+      "rent received",
+      "rental income",
+      "lease rent received",
+      "sublet income"
+    ],
+    "type": "income"
+  },
+  "Asset Sale Income": {
+    "keywords": [
+      "asset sale",
+      "scrap sale",
+      "equipment sale",
+      "vehicle sale",
+      "property sale",
+      "furniture sale",
+      "fixed asset sale"
+    ],
+    "type": "income"
+  },
+  "Food & Beverages": {
+    "keywords": [
+      "restaurant",
+      "food",
+      "dining",
+      "cafe",
+      "kitchen",
+      "meal",
+      "swiggy",
+      "zomato",
+      "ubereats",
+      "takeaway",
+      "grocery",
+      "supermarket",
+      "snacks",
+      "canteen",
+      "tiffin",
+      "beverages",
+      "tea",
+      "coffee",
+      "lunch",
+      "dinner",
+      "pizza",
+      "breakfast"
+    ],
     "type": "expense"
   },
-  "Transportation": {
-    "keywords": ["uber", "ola", "taxi", "bus", "metro", "fuel", "petrol", "diesel", "parking"],
+  "Transportation & Travel": {
+    "keywords": [
+      "uber",
+      "ola",
+      "taxi",
+      "bus",
+      "metro",
+      "fuel",
+      "petrol",
+      "diesel",
+      "parking",
+      "train",
+      "airfare",
+      "flight",
+      "auto",
+      "rickshaw",
+      "cab",
+      "toll",
+      "commute",
+      "travel",
+      "hotel",
+      "visa",
+      "transit"
+    ],
     "type": "expense"
   },
-  "Shopping": {
-    "keywords": ["amazon", "flipkart", "myntra", "shopping", "purchase", "buy"],
+  "Shopping & Purchases": {
+    "keywords": [
+      "amazon",
+      "flipkart",
+      "myntra",
+      "shopping",
+      "purchase",
+      "buy",
+      "retail",
+      "online shop",
+      "store",
+      "mall",
+      "walmart",
+      "bigbazaar",
+      "fashion",
+      "electronics",
+      "appliance",
+      "gadget",
+      "clothes",
+      "apparel"
+    ],
     "type": "expense"
   },
   "Utilities": {
-    "keywords": ["electricity", "water", "gas", "internet", "mobile", "phone", "broadband"],
+    "keywords": [
+      "electricity",
+      "water",
+      "gas",
+      "internet",
+      "mobile",
+      "phone",
+      "broadband",
+      "recharge",
+      "postpaid",
+      "prepaid",
+      "landline",
+      "utility",
+      "wifi",
+      "power",
+      "cellular",
+      "energy"
+    ],
     "type": "expense"
   },
-  "Healthcare": {
-    "keywords": ["hospital", "doctor", "medical", "pharmacy", "medicine", "health"],
+  "Healthcare & Medical": {
+    "keywords": [
+      "hospital",
+      "doctor",
+      "medical",
+      "pharmacy",
+      "medicine",
+      "health",
+      "clinic",
+      "treatment",
+      "consultation",
+      "surgery",
+      "dental",
+      "diagnostic",
+      "therapy",
+      "vaccination",
+      "health insurance",
+      "prescription",
+      "checkup",
+      "test"
+    ],
     "type": "expense"
   },
-  "Entertainment": {
-    "keywords": ["movie", "netflix", "spotify", "game", "entertainment", "cinema"],
+  "Entertainment & Leisure": {
+    "keywords": [
+      "movie",
+      "netflix",
+      "spotify",
+      "prime",
+      "zee5",
+      "game",
+      "entertainment",
+      "cinema",
+      "concert",
+      "event",
+      "show",
+      "amusement",
+      "holiday",
+      "tour",
+      "vacation"
+    ],
     "type": "expense"
   },
-  "Investment": {
-    "keywords": ["mutual fund", "sip", "stock", "investment", "dividend", "equity"],
+  "Subscription & Memberships": {
+    "keywords": [
+      "subscription",
+      "membership",
+      "gym",
+      "club",
+      "library",
+      "magazine",
+      "news",
+      "streaming service",
+      "society fee",
+      "association",
+      "yearly subscription"
+    ],
+    "type": "expense"
+  },
+  "Investment & Savings": {
+    "keywords": [
+      "mutual fund",
+      "sip",
+      "stock",
+      "investment",
+      "dividend",
+      "equity",
+      "shares",
+      "bonds",
+      "crypto",
+      "demat",
+      "nifty",
+      "nasdaq",
+      "ipo",
+      "deposit",
+      "fd",
+      "rd",
+      "etf",
+      "pension",
+      "portfolio",
+      "certificate of deposit",
+      "ulip",
+      "gold"
+    ],
     "type": "asset"
   },
-  "EMI": {
-    "keywords": ["emi", "loan", "mortgage", "credit", "installment"],
+  "Loan & EMI Payments": {
+    "keywords": [
+      "emi",
+      "loan",
+      "mortgage",
+      "credit",
+      "installment",
+      "car loan",
+      "personal loan",
+      "home loan",
+      "student loan",
+      "overdraft",
+      "repayment",
+      "debt",
+      "finance",
+      "principal",
+      "interest paid",
+      "finance charges",
+      "credit card payment"
+    ],
     "type": "liability"
   },
-  "Others": {
-    "keywords": ["misc", "other", "unknown"],
+  "Insurance Premiums": {
+    "keywords": [
+      "insurance",
+      "premium",
+      "policy payment",
+      "health insurance",
+      "car insurance",
+      "life insurance",
+      "general insurance",
+      "renewal",
+      "coverage"
+    ],
+    "type": "expense"
+  },
+  "Rent & Lease Payments": {
+    "keywords": [
+      "rent",
+      "lease",
+      "apartment rent",
+      "office rent",
+      "house rent",
+      "shop rent",
+      "property rent",
+      "rental",
+      "rental payment",
+      "tenancy"
+    ],
+    "type": "expense"
+  },
+  "Tax Payments": {
+    "keywords": [
+      "tax",
+      "income tax",
+      "gst",
+      "vat",
+      "tds",
+      "advance tax",
+      "service tax",
+      "property tax",
+      "wealth tax",
+      "tax payment",
+      "cess",
+      "professional tax",
+      "excise"
+    ],
+    "type": "expense"
+  },
+  "Office Expenses": {
+    "keywords": [
+      "stationery",
+      "office supplies",
+      "printer",
+      "printing",
+      "pen",
+      "file",
+      "folder",
+      "pantry",
+      "coffee",
+      "tea",
+      "water bottle",
+      "sanitizer",
+      "consumables",
+      "furniture",
+      "computer",
+      "monitor",
+      "software",
+      "hardware",
+      "printer cartridge",
+      "decor"
+    ],
+    "type": "expense"
+  },
+  "Professional Fees Paid": {
+    "keywords": [
+      "consultant",
+      "consultancy",
+      "auditor",
+      "legal",
+      "chartered accountant",
+      "service charges",
+      "professional fee",
+      "lawyer",
+      "architect",
+      "engineer",
+      "advisor",
+      "advocate",
+      "retainer"
+    ],
+    "type": "expense"
+  },
+  "Maintenance & Repairs": {
+    "keywords": [
+      "repair",
+      "maintenance",
+      "fixing",
+      "servicing",
+      "amc",
+      "cleaning",
+      "painting",
+      "renovation",
+      "plumbing",
+      "electrical work",
+      "servicing",
+      "car repair",
+      "building maintenance"
+    ],
+    "type": "expense"
+  },
+  "Charity & Donations": {
+    "keywords": [
+      "charity",
+      "donation",
+      "ngo",
+      "csr",
+      "fundraiser",
+      "relief",
+      "philanthropy",
+      "zakat",
+      "temple donation",
+      "church donation",
+      "alms"
+    ],
+    "type": "expense"
+  },
+  "Bank Charges": {
+    "keywords": [
+      "bank charge",
+      "atm fee",
+      "cheque bounce",
+      "bank fee",
+      "neft",
+      "rtgs",
+      "imps",
+      "swift",
+      "processing fee",
+      "forex charge",
+      "statement fee",
+      "balance non-maintenance"
+    ],
+    "type": "expense"
+  },
+  "Asset Purchase": {
+    "keywords": [
+      "asset",
+      "purchase asset",
+      "buy equipment",
+      "machinery",
+      "computer",
+      "furniture",
+      "vehicle",
+      "property",
+      "land",
+      "capital expense",
+      "fixed asset",
+      "hardware",
+      "equipment"
+    ],
+    "type": "asset"
+  },
+  "Asset Sale": {
+    "keywords": [
+      "asset sale",
+      "scrap sale",
+      "equipment sale",
+      "vehicle sale",
+      "property sale",
+      "fixed asset disposal",
+      "write-off",
+      "furniture sale"
+    ],
+    "type": "income"
+  },
+  "Other Income": {
+    "keywords": [
+      "other income",
+      "misc income",
+      "windfall",
+      "lottery",
+      "prize",
+      "royalty",
+      "unclassified income"
+    ],
+    "type": "income"
+  },
+  "Miscellaneous Expenses": {
+    "keywords": [
+      "misc",
+      "other",
+      "unknown",
+      "sundry",
+      "adjustment",
+      "round off",
+      "petty expense"
+    ],
     "type": "expense"
   }
 }

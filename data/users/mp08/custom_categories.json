@@ -1,18 +1,8 @@
-[
-  {
-    "pattern": "SALARY|WAGE|PAY.*ROLL",
-    "category": "Salary"
-  },
-  {
-    "pattern": "UPI.*SWIGGY|ZOMATO|UBER.*EATS",
-    "category": "Food"
-  },
-  {
-    "pattern": "DIVIDEND|DIV.*INCOME",
-    "category": "Investment"
-  },
-  {
-    "pattern": "EMI|LOAN.*EMI|HDFC.*LOAN",
-    "category": "EMI"
+{
+  "Consulting Income": {
+    "keywords": [
+      "Consulting"
+    ],
+    "type": "income"
   }
-]
+}

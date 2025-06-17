@@ -1,0 +1,89 @@
+{
+  "Salary": [
+    "salary",
+    "wage",
+    "payroll",
+    "income",
+    "pay"
+  ],
+  "Food": [
+    "restaurant",
+    "food",
+    "dining",
+    "cafe",
+    "kitchen",
+    "meal",
+    "swiggy",
+    "zomato",
+    "uber eats"
+  ],
+  "Transportation": [
+    "uber",
+    "ola",
+    "taxi",
+    "bus",
+    "metro",
+    "fuel",
+    "petrol",
+    "diesel",
+    "parking"
+  ],
+  "Shopping": [
+    "amazon",
+    "flipkart",
+    "myntra",
+    "shopping",
+    "purchase",
+    "buy"
+  ],
+  "Utilities": [
+    "electricity",
+    "water",
+    "gas",
+    "internet",
+    "mobile",
+    "phone",
+    "broadband"
+  ],
+  "Healthcare": [
+    "hospital",
+    "doctor",
+    "medical",
+    "pharmacy",
+    "medicine",
+    "health"
+  ],
+  "Entertainment": [
+    "movie",
+    "netflix",
+    "spotify",
+    "game",
+    "entertainment",
+    "cinema"
+  ],
+  "Investment": [
+    "mutual fund",
+    "sip",
+    "stock",
+    "investment",
+    "dividend",
+    "equity"
+  ],
+  "EMI": [
+    "emi",
+    "loan",
+    "mortgage",
+    "credit",
+    "installment"
+  ],
+  "Suspense": [
+    "suspense",
+    "uncertain",
+    "low confidence"
+  ],
+  "Others": [
+    "misc",
+    "other",
+    "unknown"
+  ]
+}

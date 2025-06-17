@@ -23,6 +23,96 @@
         "file_size": "unknown",
         "processing_time": "unknown"
       }
+    },
+    {
+      "timestamp": "2025-06-17T05:08:03.942119",
+      "action": "PDF_UPLOAD",
+      "details": {
+        "filename": "Book1.xlsx",
+        "transaction_count": 82,
+        "status": "success"
+      },
+      "metadata": {
+        "file_size": "unknown",
+        "processing_time": "unknown"
+      }
+    },
+    {
+      "timestamp": "2025-06-17T05:19:36.250800",
+      "action": "PDF_UPLOAD",
+      "details": {
+        "filename": "Book1.xlsx",
+        "transaction_count": 82,
+        "status": "success"
+      },
+      "metadata": {
+        "file_size": "unknown",
+        "processing_time": "unknown"
+      }
+    },
+    {
+      "timestamp": "2025-06-17T11:02:04.460995",
+      "action": "PDF_UPLOAD",
+      "details": {
+        "filename": "mp08.xlsx",
+        "transaction_count": 82,
+        "status": "success"
+      },
+      "metadata": {
+        "file_size": "unknown",
+        "processing_time": "unknown"
+      }
+    },
+    {
+      "timestamp": "2025-06-17T11:13:19.824895",
+      "action": "CATEGORY_CREATION",
+      "details": {
+        "category_name": "Consulting Income",
+        "keywords": [
+          "Consulting"
+        ],
+        "keyword_count": 1
+      },
+      "metadata": {}
+    },
+    {
+      "timestamp": "2025-06-17T11:24:33.605867",
+      "action": "CATEGORY_CREATION",
+      "details": {
+        "category_name": "Interest Savings",
+        "keywords": [
+          "savings",
+          "interest"
+        ],
+        "keyword_count": 2
+      },
+      "metadata": {}
+    },
+    {
+      "timestamp": "2025-06-17T11:24:43.901431",
+      "action": "CATEGORY_CREATION",
+      "details": {
+        "category_name": "Interest FD",
+        "keywords": [
+          "FD",
+          "interest"
+        ],
+        "keyword_count": 2
+      },
+      "metadata": {}
+    },
+    {
+      "timestamp": "2025-06-17T11:50:08.724720",
+      "action": "PDF_UPLOAD",
+      "details": {
+        "filename": "bankstatementconverter.com.csv",
+        "transaction_count": 381,
+        "status": "success"
+      },
+      "metadata": {
+        "file_size": "unknown",
+        "processing_time": "unknown"
+      }
     }
   ],
   "cleared_at": "2025-06-16T20:07:50.510305"
